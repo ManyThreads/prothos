@@ -1,5 +1,6 @@
-# ProThOS
-programmable taskflow oriented operating system
+# ProThOS: programmable taskflow oriented operating system
+
+* https://manythreads.github.io/prothos/
 
 # Acknowledgements
 
