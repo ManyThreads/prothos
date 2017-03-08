@@ -3,6 +3,9 @@ layout: page
 title: About ProThOS
 ---
 
+![BMBF]({{site.baseurl}}/logo_bmbf.png){:class="img-logoright"}
+![DLR]({{site.baseurl}}/logo_dlr.png){:class="img-logoright"}
+
 Datenfluss- und Taskbasierte Modelle sind ungeachtet ihrer Potentiale noch verhältnismäßig neu im HPC Umfeld. Das Problem dabei ist, dass prinzipiell nur taskbasierte Programme ausgeführt werden, deren Workload-to-Communication Ratio entsprechend groß ist, d.h. die sehr grobgranular sind. Insbesondere die nötige Verwaltung der Ressourcen und der Datenverfügbarkeit generiert einen fundamentalen Overhead. Hinzu kommt, dass sich die Implementierung der Tasks an einer „typischen“ Hardware orientiert, während die Ausführung später auf heterogene oder anders strukturierte Hardware trifft.
 ProThOS adressiert diese Herausforderungen, indem es die Programmierung und Ausführung von Tasks und Datenflüssen vom Programmiermodell bis hin zum Betriebssystem bearbeitet. Die Ausführungsgeschwindigkeit und Skalierbarkeit soll deutlich verbessert werden, indem alle relevanten Aspekte über die Ebenen hinweg aufeinander abgestimmt werden: Das bedeutet, dass 
 * das Programmiermodell und die Compiler Abhängigkeits- und Granularitäts-Informationen exportieren ohne dabei die Programmierbarkeit zu beeinträchtigen, 
@@ -20,8 +23,5 @@ Alle Ergebnisse werden im Rahmen von Referenzanwendungen verifiziert und evaluie
 
 
 ## Funding
-
-![BMBF]({{site.baseurl}}/logo_bmbf.png){:class="img-logoright"}
-![DLR]({{site.baseurl}}/logo_dlr.png){:class="img-logoright"}
 
 The ProThOS project is funded by the Federal Ministry of Education and Research (BMBF) of Germany under Grant No. 01IH16011 from January 2017 to December 2019. The grant was part of the 5th HPC-Call of the Gauss Allianz.
