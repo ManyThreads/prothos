@@ -1,17 +1,21 @@
 #pragma once
 
-#include "TaskGraph.hh"
+//#include "TaskGraph.hh"
 
 #include <vector>
+#include <algorithm>
 
 namespace Prothos{
 namespace FlowGraph{
 
 class Task{
 	public:
-		virtual ~Task();
+		virtual ~Task(){};
 		virtual void execute() = 0;
 };
+
+// Since AnyDSL does not need typed messages use a generic message type as placeholder
+class GenericMsg{};
 
 template<typename NodeType, typename Input, typename Output>
 class ApplyBodyTask : public Task{
@@ -31,14 +35,14 @@ class ApplyBodyTask : public Task{
 
 	private:
 		NodeType &myNode;
-		Input &myInput;
+		const Input &myInput;
 		Output myOutput;
 };
 
 template<typename Input, typename Output>
 class FunctionBody{
 	public:
-		virtual ~FunctionBody();
+		virtual ~FunctionBody(){};
 		virtual Output operator()(const Input &i) = 0;
 };
 
@@ -50,7 +54,7 @@ class FunctionBodyLeaf : public FunctionBody<Input, Output> {
 		{}
 
 		Output operator() (const Input &i){
-			return body(i);
+			return myBody(i);
 		}
 
 	private:
@@ -82,7 +86,7 @@ class BroadcastCache{
 		}
 
 	private:
-		std::vector<T> successors;
+		std::vector<Receiver<T>*> successors;
 };
 
 
@@ -130,10 +134,7 @@ class FunctionInput : public Receiver<Input>{
 	
 };
 
-// Since AnyDSL does not need typed messages use a generic message type as placeholder
-class GenericMsg{};
-
-class FunctionNode : public FunctionInput<GenericMsg, GenericMsg>, Sender<GenericMsg>{
+class FunctionNode : public FunctionInput<GenericMsg, GenericMsg>, public Sender<GenericMsg>{
 	public:
 		template<typename Body>
 		FunctionNode(Body body)
