@@ -1,6 +1,7 @@
 #pragma once
 
-//#include "TaskGraph.hh"
+#include "Task.hh"
+#include "LocalScheduler.hh"
 
 #include <vector>
 #include <algorithm>
@@ -8,35 +9,31 @@
 namespace Prothos{
 namespace FlowGraph{
 
-class Task{
-	public:
-		virtual ~Task(){};
-		virtual void execute() = 0;
-};
-
 // Since AnyDSL does not need typed messages use a generic message type as placeholder
 class GenericMsg{};
 
 template<typename NodeType, typename Input, typename Output>
 class ApplyBodyTask : public Task{
-	public:
-		ApplyBodyTask(NodeType &n, const Input &i)
-			: myNode(n)
-			, myInput(i)
-		{}
+public:
+	ApplyBodyTask(NodeType &n, const Input &i)
+		: Task(TaskState::SuccessorsUnknown)
+		, myNode(n)
+		, myInput(i)
+	{}
 
-		virtual void execute() override {
-			myOutput = myNode.applyBody(myInput);
-		}
+	virtual void execute() override{
+	myOutput = myNode.applyBody(myInput);
+	LocalScheduler::getLocalScheduler().taskDone(this);
+	};
 
-		Output *getOutput(){
-			return &myOutput;
-		}
+	Output *getOutput(){
+		return &myOutput;
+	};
 
-	private:
-		NodeType &myNode;
-		const Input &myInput;
-		Output myOutput;
+private:
+	NodeType &myNode;
+	const Input &myInput;
+	Output myOutput;
 };
 
 template<typename Input, typename Output>
@@ -123,7 +120,7 @@ class FunctionInput : public Receiver<Input>{
 		}	
 
 		Task *putTask(const Input &i) override {
-			return new ApplyBodyTask<FunctionInput, Input, Output>(*this, i);
+			return new ApplyBodyTask<FunctionInput<Input, Output>, Input, Output>(*this, i);
 		}
 
 		~FunctionInput(){
