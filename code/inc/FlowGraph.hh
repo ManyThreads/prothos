@@ -22,8 +22,8 @@ public:
 	{}
 
 	virtual void execute() override{
-	myOutput = myNode.applyBody(myInput);
-	LocalScheduler::getLocalScheduler().taskDone(this);
+		myOutput = myNode.applyBody(myInput);
+		LocalScheduler::getLocalScheduler().taskDone(this);
 	};
 
 	Output *getOutput(){

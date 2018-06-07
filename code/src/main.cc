@@ -10,6 +10,8 @@ int main(){
 
 	prothos_init();
 
+	prothos_finalize();
+
 	//FlowGraph::FunctionNode hfn([](FlowGraph::GenericMsg){
 				//std::cout << "Hello ";
 				//return FlowGraph::GenericMsg();
