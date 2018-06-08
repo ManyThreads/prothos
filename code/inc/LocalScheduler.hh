@@ -10,6 +10,7 @@ class LocalScheduler{
 public:
 	static LocalScheduler &getLocalScheduler();
 	Task* getTask();
+	void scheduleTask(Task* task);
 	void taskDone(Task* task);
 
 	void schedulerMain();

@@ -3,6 +3,7 @@
 #include "Task.hh"
 #include "LocalScheduler.hh"
 
+#include <iostream>
 #include <vector>
 #include <algorithm>
 
@@ -21,10 +22,19 @@ public:
 		, myInput(i)
 	{}
 
-	virtual void execute() override{
+	void execute() override{
 		myOutput = myNode.applyBody(myInput);
 		LocalScheduler::getLocalScheduler().taskDone(this);
 	};
+
+	void expand() override{
+		for(auto n : myNode.successors()){
+			Task *t = n->putTask(myOutput);
+			t->addParent(this);
+			addChild(t);
+		}	
+		doneExpanding();
+	}
 
 	Output *getOutput(){
 		return &myOutput;
@@ -64,45 +74,47 @@ class Receiver{
 		virtual Task *putTask(const Input &t) = 0;
 };
 
-template<typename T>
-class BroadcastCache{
-	public:
-		void registerSuccessor(Receiver<T> *r){
-			successors.push_back(r);
-		}
+//template<typename T>
+//class BroadcastCache{
+	//public:
+		//void registerSuccessor(Receiver<T> *r){
+			//successors.push_back(r);
+		//}
 
-		void removeSuccessor(Receiver<T> *r) {
-			// erase-remove-idiom
-			successors.erase(std::remove(successors.begin(), successors.end(), r), successors.end());
-		}
+		//void removeSuccessor(Receiver<T> *r) {
+			//// erase-remove-idiom
+			//successors.erase(std::remove(successors.begin(), successors.end(), r), successors.end());
+		//}
 
-		void tryPut(const T &t) {
-			for(auto const& s: successors) {
-				s->putTask(t);
-			}
-		}
+		//void tryPut(const T &t) {
+			//for(auto const& s: successors) {
+				//s->putTask(t);
+			//}
+		//}
 
-	private:
-		std::vector<Receiver<T>*> successors;
-};
+	//private:
+		//std::vector<Receiver<T>*> successors;
+//};
 
 
 template<typename Output>
 class Sender{
 	public:
-		BroadcastCache<Output> &successors(){
+		std::vector<Receiver<Output>* > successors(){
 			return mySuccessors;
 		}
 		void registerSuccessor(Receiver<Output> &r) {
-			mySuccessors.registerSuccessor(&r);
+			mySuccessors.push_back(&r);
 		}
 
 		void removeSuccessor(Receiver<Output> &r) {
 			mySuccessors.removeSuccessor(&r);
+			// erase-remove-idiom
+			mySuccessors.erase(std::remove(mySuccessors.begin(), mySuccessors.end(), r), mySuccessors.end());
 		}
 
 	private:
-		 BroadcastCache<Output> mySuccessors;
+		std::vector<Receiver<Output>* > mySuccessors;
 };
 
 template<typename Input, typename Output>
@@ -126,6 +138,8 @@ class FunctionInput : public Receiver<Input>{
 		~FunctionInput(){
 			delete myBody;
 		}
+
+		virtual std::vector<Receiver<Output>*> successors() = 0;
 	private:
 		FunctionBodyType *myBody;
 	
@@ -137,6 +151,10 @@ class FunctionNode : public FunctionInput<GenericMsg, GenericMsg>, public Sender
 		FunctionNode(Body body)
 			: FunctionInput<GenericMsg, GenericMsg>(body)
 		{}
+		
+		std::vector<Receiver<GenericMsg>*> successors(){
+			return Sender<GenericMsg>::successors();
+		}
 };
 
 template<typename T>

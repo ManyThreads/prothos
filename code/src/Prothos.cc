@@ -15,7 +15,7 @@ void Prothos::prothos_init(){
 		return;
 	}
 
-	threads.reserve(numCPU - 1);
+	threads.resize(numCPU - 1);
 
 	//Create a scheduler instance
 	LocalScheduler &scheduler = LocalScheduler::getLocalScheduler();
@@ -42,6 +42,10 @@ void Prothos::prothos_init(){
 		CPU_SET(i, &cpus);
 		pthread_setaffinity_np(threads[i].native_handle(), sizeof(cpu_set_t), &cpus);
 	}
+}
+
+void Prothos::prothos_schedule_task(Task *t){
+	LocalScheduler::getLocalScheduler().scheduleTask(t);
 }
 
 void Prothos::prothos_finalize(){

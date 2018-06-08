@@ -14,6 +14,7 @@ public:
 	Task(TaskState state);
 	virtual ~Task(){};
 	virtual void execute() = 0;
+	virtual void expand() = 0;
 	void addChild(Task* task);
 	void addParent(Task* task);
 	void doneExpanding(); //Called when all successor tasks have been generated

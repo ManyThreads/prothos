@@ -10,23 +10,24 @@ int main(){
 
 	prothos_init();
 
+	FlowGraph::FunctionNode hfn([](FlowGraph::GenericMsg){
+				std::cout << "Hello ";
+				return FlowGraph::GenericMsg();
+			}
+	);
+
+	FlowGraph::FunctionNode wfn([](FlowGraph::GenericMsg){
+				std::cout << "world" << std::endl;
+				return FlowGraph::GenericMsg();
+			}
+	);
+
+	FlowGraph::makeEdge(hfn, wfn);
+
+	Task *t = hfn.putTask(FlowGraph::GenericMsg());
+
+	prothos_schedule_task(t);
 	prothos_finalize();
-
-	//FlowGraph::FunctionNode hfn([](FlowGraph::GenericMsg){
-				//std::cout << "Hello ";
-				//return FlowGraph::GenericMsg();
-			//}
-	//);
-
-	//FlowGraph::FunctionNode wfn([](FlowGraph::GenericMsg){
-				//std::cout << "world" << std::endl;
-				//return FlowGraph::GenericMsg();
-			//}
-	//);
-
-	//FlowGraph::makeEdge(hfn, wfn);
-
-	//hfn.putTask(FlowGraph::GenericMsg());
 
 	return 0;
 }

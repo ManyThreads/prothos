@@ -21,6 +21,7 @@ void Prothos::LocalScheduler::schedulerMain(){
 		if (!completedTask->notifySuccessors()){
 			//Child tasks not known
 			//decoder->expand(completedTask)
+			completedTask->expand();
 			completedTasks.push(completedTask);
 		}
 		else{
@@ -36,6 +37,10 @@ void Prothos::LocalScheduler::schedulerMain(){
 
 Task* Prothos::LocalScheduler::getTask(){
 	return readyTasks.pop();
+}
+	
+void Prothos::LocalScheduler::scheduleTask(Task* task){
+	readyTasks.push(task);
 }
 
 void Prothos::LocalScheduler::taskDone(Task* task){
