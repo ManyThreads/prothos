@@ -49,5 +49,7 @@ void Prothos::prothos_schedule_task(Task *t){
 }
 
 void Prothos::prothos_finalize(){
+	LocalScheduler::getLocalScheduler().waitForAll();
 	for(auto &t : threads) t.join();
+	std::cout << __func__ << std::endl;
 }

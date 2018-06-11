@@ -5,6 +5,7 @@ using namespace Prothos;
 
 Prothos::Task::Task(TaskState state)
 	: expansionState(state)
+	, dependencyCounter(0)
 {}
 
 void Prothos::Task::addChild(Task* task){

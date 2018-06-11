@@ -24,13 +24,11 @@ public:
 
 	void execute() override{
 		myOutput = myNode.applyBody(myInput);
-		LocalScheduler::getLocalScheduler().taskDone(this);
 	};
 
 	void expand() override{
 		for(auto n : myNode.successors()){
 			Task *t = n->putTask(myOutput);
-			t->addParent(this);
 			addChild(t);
 		}	
 		doneExpanding();

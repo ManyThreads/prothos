@@ -16,13 +16,21 @@ int main(){
 			}
 	);
 
+	FlowGraph::FunctionNode cfn([](FlowGraph::GenericMsg){
+				std::cout << "cruel ";
+				return FlowGraph::GenericMsg();
+			}
+	);
+
+
 	FlowGraph::FunctionNode wfn([](FlowGraph::GenericMsg){
 				std::cout << "world" << std::endl;
 				return FlowGraph::GenericMsg();
 			}
 	);
 
-	FlowGraph::makeEdge(hfn, wfn);
+	FlowGraph::makeEdge(hfn, cfn);
+	FlowGraph::makeEdge(cfn, wfn);
 
 	Task *t = hfn.putTask(FlowGraph::GenericMsg());
 

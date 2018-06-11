@@ -21,10 +21,9 @@ public:
 	bool notifySuccessors();
 	std::vector<Task*> getSuccessors();
 	bool isReady();
-protected:
-	int dependencyCounter;
 private:
 	TaskState expansionState;
+	int dependencyCounter;
 	std::vector<Task*> predecessors;
 	std::vector<Task*> successors;
 };
