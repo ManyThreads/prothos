@@ -32,7 +32,7 @@ int main(){
 	FlowGraph::makeEdge(hfn, cfn);
 	FlowGraph::makeEdge(cfn, wfn);
 
-	Task *t = hfn.putTask(FlowGraph::GenericMsg());
+	Task *t = hfn.pushValue(FlowGraph::GenericMsg());
 
 	prothos_schedule_task(t);
 	prothos_finalize();
