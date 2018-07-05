@@ -6,9 +6,110 @@
 #include <iostream>
 #include <vector>
 #include <algorithm>
+#include <mutex>
+#include <functional>
+#include <assert.h>
 
 namespace Prothos{
 namespace FlowGraph{
+
+template<typename T> 
+class Future;
+
+template<typename T>
+class Promise{
+	public:
+		Promise(Task& myTask)
+			: refCount(0)
+			, openReservations(0)
+			, myTask(myTask)
+	{}
+		void write(T val){
+			//std::lock_guard<std::mutex> lg(m);
+			this->val = val;
+		}
+
+		void reserve(){
+			refCount++;
+			openReservations++;
+		}
+
+		void registerFuture(Future<T> &f){
+			myTask.addChild(&f.getTask());
+			openReservations--;
+		}
+
+		T& getVal(){
+			return val;
+		}
+
+		void release(){
+			refCount--;
+			//if(refCount == 0)
+				//delete &myTask;
+		};
+
+	private:
+		//void notifySucc(){
+			//std::lock_guard<std::mutex> lg(m);
+			//for(auto const &s : succ){
+				//s.trigger();
+			//}
+		//};
+
+		T val;
+		//std::vector<std::reference_wrapper<Future<T> > > succ;
+		size_t refCount;
+		size_t openReservations;
+		Task& myTask;
+		//std::mutex m;
+};
+
+template<typename T>
+class Future{
+	public:
+		Future(Promise<T> promise, Task& myTask)
+			: prom(&promise)
+			, myTask(myTask)
+		{
+			prom->reserve();
+		}
+
+		T& getVal(){
+			assert(prom);
+			return prom->getVal();
+		}
+
+		Task& getTask(){
+			return myTask;
+		}
+
+		void release(){
+			prom->release();
+			prom = nullptr;
+		}
+		
+	private:
+		Promise<T>* prom; //use pointer, so prom can be deleted
+		Task& myTask;
+		
+};
+
+template<typename T>
+class DummyInputTask : public Task{
+	public:
+		DummyInputTask(const T &t)
+		: Task(AllSuccessorsKnown)
+        , prom(*this)
+		{
+			prom.write(t);
+		}
+
+		void execute() override {};
+		void expand() override {};
+
+		Promise<T> prom;
+};
 
 // Since AnyDSL does not need typed messages use a generic message type as placeholder
 class GenericMsg{};
@@ -16,20 +117,23 @@ class GenericMsg{};
 template<typename NodeType, typename Input, typename Output>
 class ApplyBodyTask : public Task{
 public:
-	ApplyBodyTask(NodeType &n, const Input &i)
+	ApplyBodyTask(NodeType &n, Promise<Input> &p)
 		: Task(TaskState::SuccessorsUnknown)
 		, myNode(n)
-		, myInput(i)
-	{}
+		, myInput(p, *this)
+		, myOutput(*this)
+	{
+		p.registerFuture(myInput);
+	}
 
 	void execute() override{
-		myOutput = myNode.applyBody(myInput);
+		myOutput.write(myNode.applyBody(myInput.getVal()));
+		myInput.release();
 	};
 
 	void expand() override{
 		for(auto n : myNode.successors()){
-			Task *t = n->putTask(myOutput);
-			addChild(t);
+			n->pushPromise(myOutput);
 		}	
 		doneExpanding();
 	}
@@ -40,8 +144,8 @@ public:
 
 private:
 	NodeType &myNode;
-	const Input &myInput;
-	Output myOutput;
+	Future<Input> myInput;
+	Promise<Output> myOutput;
 };
 
 template<typename Input, typename Output>
@@ -69,31 +173,12 @@ class FunctionBodyLeaf : public FunctionBody<Input, Output> {
 template<typename Input>
 class Receiver{
 	public:
-		virtual Task *putTask(const Input &t) = 0;
+		virtual Task *pushPromise(Promise<Input> &p) = 0;
+		Task* pushValue(const Input &i){
+			DummyInputTask<Input> *t = new DummyInputTask<Input>(i);
+			return pushPromise(t->prom);
+		}
 };
-
-//template<typename T>
-//class BroadcastCache{
-	//public:
-		//void registerSuccessor(Receiver<T> *r){
-			//successors.push_back(r);
-		//}
-
-		//void removeSuccessor(Receiver<T> *r) {
-			//// erase-remove-idiom
-			//successors.erase(std::remove(successors.begin(), successors.end(), r), successors.end());
-		//}
-
-		//void tryPut(const T &t) {
-			//for(auto const& s: successors) {
-				//s->putTask(t);
-			//}
-		//}
-
-	//private:
-		//std::vector<Receiver<T>*> successors;
-//};
-
 
 template<typename Output>
 class Sender{
@@ -129,8 +214,8 @@ class FunctionInput : public Receiver<Input>{
 			return (*myBody)(i); 
 		}	
 
-		Task *putTask(const Input &i) override {
-			return new ApplyBodyTask<FunctionInput<Input, Output>, Input, Output>(*this, i);
+		Task *pushPromise(Promise<Input> &p) override {
+			return new ApplyBodyTask<FunctionInput<Input, Output>, Input, Output>(*this, p);
 		}
 
 		~FunctionInput(){
