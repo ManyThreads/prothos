@@ -29,12 +29,22 @@ int main(){
 			}
 	);
 
+	FlowGraph::JoinNode<2> jn;
+
+	FlowGraph::FunctionNode lfn([](FlowGraph::GenericMsg){
+				std::cout << "!!!!!1 elf" << std::endl;
+				return FlowGraph::GenericMsg();
+			}
+	);
+
 	FlowGraph::makeEdge(hfn, cfn);
 	FlowGraph::makeEdge(cfn, wfn);
+	FlowGraph::makeEdge(cfn, jn.getInPort(0));
+	FlowGraph::makeEdge(wfn, jn.getInPort(1));
+	FlowGraph::makeEdge(jn, lfn);
 
-	Task *t = hfn.pushValue(FlowGraph::GenericMsg());
+	hfn.pushValue(FlowGraph::GenericMsg());
 
-	prothos_schedule_task(t);
 	prothos_finalize();
 
 	return 0;

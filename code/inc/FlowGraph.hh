@@ -21,7 +21,6 @@ class Promise{
 	public:
 		Promise(Task& myTask)
 			: refCount(0)
-			, openReservations(0)
 			, myTask(myTask)
 	{}
 		void write(T val){
@@ -31,12 +30,10 @@ class Promise{
 
 		void reserve(){
 			refCount++;
-			openReservations++;
 		}
 
 		void registerFuture(Future<T> &f){
 			myTask.addChild(&f.getTask());
-			openReservations--;
 		}
 
 		T& getVal(){
@@ -50,29 +47,36 @@ class Promise{
 		};
 
 	private:
-		//void notifySucc(){
-			//std::lock_guard<std::mutex> lg(m);
-			//for(auto const &s : succ){
-				//s.trigger();
-			//}
-		//};
-
 		T val;
-		//std::vector<std::reference_wrapper<Future<T> > > succ;
 		size_t refCount;
-		size_t openReservations;
 		Task& myTask;
-		//std::mutex m;
 };
 
 template<typename T>
 class Future{
 	public:
-		Future(Promise<T> promise, Task& myTask)
-			: prom(&promise)
+		Future()
+			: prom(nullptr)
+			, myTask(nullptr)
+		{}
+
+		Future(Promise<T> *promise, Task* myTask)
+			: prom(promise)
 			, myTask(myTask)
 		{
+			assert(prom);
+			assert(myTask);
 			prom->reserve();
+		}
+
+		void setProm(Promise<T> *promise){
+			assert(promise);
+			prom = promise;
+		}
+
+		void setTask(Task *task){
+			assert(task);
+			myTask = task;
 		}
 
 		T& getVal(){
@@ -81,17 +85,19 @@ class Future{
 		}
 
 		Task& getTask(){
-			return myTask;
+			assert(myTask);
+			return *myTask;
 		}
 
 		void release(){
+			assert(prom);
 			prom->release();
 			prom = nullptr;
 		}
 		
 	private:
 		Promise<T>* prom; //use pointer, so prom can be deleted
-		Task& myTask;
+		Task* myTask;
 		
 };
 
@@ -99,7 +105,7 @@ template<typename T>
 class DummyInputTask : public Task{
 	public:
 		DummyInputTask(const T &t)
-		: Task(AllSuccessorsKnown)
+		: Task(Zombie, 0)
         , prom(*this)
 		{
 			prom.write(t);
@@ -118,9 +124,9 @@ template<typename NodeType, typename Input, typename Output>
 class ApplyBodyTask : public Task{
 public:
 	ApplyBodyTask(NodeType &n, Promise<Input> &p)
-		: Task(TaskState::SuccessorsUnknown)
+		: Task(TaskState::SuccessorsUnknown, 1)
 		, myNode(n)
-		, myInput(p, *this)
+		, myInput(&p, this)
 		, myOutput(*this)
 	{
 		p.registerFuture(myInput);
@@ -135,7 +141,6 @@ public:
 		for(auto n : myNode.successors()){
 			n->pushPromise(myOutput);
 		}	
-		doneExpanding();
 	}
 
 	Output *getOutput(){
@@ -188,14 +193,12 @@ class Sender{
 		}
 		void registerSuccessor(Receiver<Output> &r) {
 			mySuccessors.push_back(&r);
-			r->incPredecessors();
 		}
 
 		void removeSuccessor(Receiver<Output> &r) {
 			mySuccessors.removeSuccessor(&r);
 			// erase-remove-idiom
 			mySuccessors.erase(std::remove(mySuccessors.begin(), mySuccessors.end(), r), mySuccessors.end());
-			r->decPredecessors();
 		}
 
 	private:
@@ -252,114 +255,137 @@ inline void removeEdge(Sender<T> &s, Receiver<T> &r) {
     s.removeSuccessor(r);
 }
 
-template <typename Input, typename Output>
-class InputHandler{
+class Handler{
 	public:
-		virtual Output handleInput(Input &i) = 0;
+		virtual void handle() = 0;
 };
 
 template <typename Input>
 class QueueingInputPort : public Receiver<Input>{
 	public:
-		QueueingInputPort(InputHandler<void, Task*> &h) 
-			: handler(h)
-		{}
+		QueueingInputPort() 
+			: handler(nullptr)
+		{
+		}
 
-		Task *putTask(const Task *t) override {
-			predecessors.push_back(t);
-			return handler.handleInput();
+		void setHandler(Handler *h){
+			handler = h;
+		}
+
+		Task *pushPromise(Promise<Input> &p) override {
+			p.reserve();
+			prom.push_back(&p);
+			assert(handler);
+			handler->handle();
+			return nullptr;
 		}
 		
-		bool hasPredecessors(){ return !predecessors.empty(); }
+		bool hasPromise(){ 
+			return !prom.empty(); 
+		}
+
+		Promise<Input> *getPromise(){ 
+			Promise<Input> *ret = prom.back();
+			prom.pop_back();
+			return ret; 
+		}
+
 	private:
-		virtual void tryJoinTask() = 0;
-		InputHandler<Input, Task*> &handler;
-		std::vector<Task*> predecessors;
+		Handler *handler;
+		std::vector<Promise<Input>* > prom;
 };
 
-template<typename Input, typename Output, size_t numPorts>
+template<typename T>
+struct JoinMsg : public GenericMsg{
+	std::vector<T> elements;
+};
+
+template<typename NodeType, typename Input, typename Output, size_t NumPorts>
 class JoinTask : public Task{
-	public:
-		JoinTask();
+public:
+	JoinTask(NodeType &n, std::array<Promise<Input>*, NumPorts> &p)
+		: Task(TaskState::SuccessorsUnknown, NumPorts)
+		, myNode(n)
+		, myOutput(*this)
+	{
+		for(size_t i = 0; i < NumPorts; i++){
+			myInput[i].setTask(this);
+			myInput[i].setProm(p[i]);
+			p[i]->registerFuture(myInput[i]);
+			p[i]->release();
+		}
+	}
+
+	void execute() override{
+		JoinMsg<Input> msg;
+		for(auto &i : myInput){
+			msg.elements.push_back(i.getVal());
+			i.release();
+		}
+		myOutput.write(msg);
+	};
+
+	void expand() override{
+		for(auto n : myNode.successors()){
+			n->pushPromise(myOutput);
+		}	
+	}
+
+	Output *getOutput(){
+		return &myOutput;
+	};
+
+private:
+	NodeType &myNode;
+	Promise<Output> myOutput;
+	std::array<Future<Input>, NumPorts> myInput;
 };
 
 template <typename Input, typename Output, size_t NumPorts>
-class JoinInput : public InputHandler<void, Task*>{
+class JoinInput : public Handler{
 	public:
-		JoinInput(){};
+		JoinInput()
+		{
+			for(auto &i : inPorts){
+				i.setHandler(this);
+			}	
+		};
 
 		Receiver<Input> &getInPort(size_t portNum){ 
-			assert(portNum < NumPorts);
 			return inPorts[portNum]; 
 		}
 		
-		Output applyBody( const Input &i){
-			return i; 
-		}	
-
-	private:
-		void tryJoinTask() override {
-			for(size_t i = 0; i < NumPorts; i++){
-				if(!inPorts[i].hasPredecessors())
-					return nullptr;
-			}
-			std::vector<Task*> preTasks;
-			for(size_t i = 0; i < NumPorts; i++){
-				Task* t = inPorts[i].getPredecessors();	
-				assert(t);
-				preTasks.push_back(t);
-			}
-			new ApplyBodyTask<JoinInput<Input, NumPorts>, Input, Output>(*this, preTasks);
+		void handle() override {
+			tryJoinTask();
 		}
 
-		QueueingInputPort<Input> inPorts[NumPorts] = QueueingInputPort<Input>(*this);
+		virtual std::vector<Receiver<GenericMsg>*> successors() = 0;
+	private:
+		void tryJoinTask() {
+			for(auto i : inPorts){
+				if(!i.hasPromise())
+					return;
+			}
+			std::array<Promise<Input>*, NumPorts> pred;
+			for(size_t i = 0; i < NumPorts; i++){
+				pred[i] = inPorts[i].getPromise();	
+			}
+			new JoinTask<JoinInput<Input, Output, NumPorts>, Input, Output, NumPorts>(*this, pred);
+		}
+
+		std::array<QueueingInputPort<Input>, NumPorts> inPorts;
 		
 };
 
 template <size_t NumPorts>
-class JoinNode : public JoinInput<GenericMsg, NumPorts>, public Sender<GenericMsg>{
+class JoinNode : public JoinInput<GenericMsg, GenericMsg, NumPorts>, public Sender<GenericMsg>{
+	public:
+		JoinNode(){};
+
+		std::vector<Receiver<GenericMsg>*> successors(){
+			return Sender<GenericMsg>::successors();
+		}	
 };
-
-//enum class JoinPolicy{
-	//Queueing,
-	//Reserving
-//};
-
-////template<typename Input>
-////class InputHandler{
-	////public:
-		
-////};
-
-//template<typename Input, size_t NumPorts>
-//class ReservingJoinInput{
-	//ReservingInputPort<Input> ports[NumPorts];
-//};
-
-////template<typename Input>
-////class BufferingInputPort : public Receiver<Input>{
-	////public:
-		////BufferingInputPort();
-		////virtual Task *putTask(const Input &t) = 0;
-	////private:
-		////std::vector<Input>
-////};
-
-////template<typename Input, size_t NumPorts>
-////class QueueingJoinInput{
-	////InputPort<Input> ports[NumPorts];
-////};
-
-//template<size_t NumPorts, JoinPolicy Policy=JoinPolicy::Queueing>
-//class JoinNode;
-
-//template<size_t NumPorts>
-//class JoinNode<NumPorts, JoinPolicy::Queueing> : public QueueingJoinInput<GenericMsg, NumPorts>, public Sender<GenericMsg>{
-//};
-
-//template<size_t NumPorts>
-//class JoinNode<NumPorts, JoinPolicy::Reserving> : public ReservingJoinInput<GenericMsg, NumPorts>, public Sender<GenericMsg>{
-//};
 
 } //FlowGraph
 } //Prothos

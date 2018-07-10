@@ -10,7 +10,7 @@ namespace Prothos{
 class ExitTask : public Task{
 	public:
 		ExitTask()
-			: Task(AllSuccessorsKnown)
+			: Task(Expanded, 0)
 		{}
 		~ExitTask(){}
 		void expand(){}

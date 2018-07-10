@@ -27,21 +27,24 @@ void Prothos::LocalScheduler::schedulerMain(){
 	//decoder->expand(NULL);
 	while(openTasks != 0){
 		Task* completedTask = completedTasks.pop();
-		if (!completedTask->notifySuccessors()){
-			//Child tasks not known
-			completedTask->expand();
-			completedTasks.push(completedTask);
-		}
-		else{
-			for(auto successor : completedTask->getSuccessors()){
-				if(successor->isReady()){
-					readyTasks.push(successor);
-					openTasks.fetch_add(1);
+		switch(completedTask->getState()){
+			case SuccessorsUnknown:{
+					completedTask->expandTask();
+					completedTasks.push(completedTask);
 				}
-			}
-			openTasks.fetch_sub(1);
+				break;
+			case Expanded:{
+					completedTask->notifySuccessors();
+					for(auto successor : completedTask->getSuccessors()){
+						if(successor->isReady()){
+							readyTasks.push(successor);
+							openTasks.fetch_add(1);
+						}
+					}
+					openTasks.fetch_sub(1);
+				}
+				break;	
 		}
-
 	}
 	readyTasks.push(&exitTask);
 }
@@ -68,7 +71,7 @@ void Prothos::thread_main(){
 	while(true){
 		Task* nextTask = scheduler.getTask(); //blocks, if queue empty
 
-	    nextTask->execute();
+	    nextTask->executeTask();
 
 	    scheduler.taskDone(nextTask);
 	}

@@ -1,35 +1,54 @@
 #include "Task.hh"
 #include "LocalScheduler.hh"
+#include <iostream>
 
 using namespace Prothos;
 
-Prothos::Task::Task(TaskState state)
-	: expansionState(state)
-	, dependencyCounter(0)
-{}
+Prothos::Task::Task(TaskState state, int dependencies)
+	: state(state)
+	, dependencyCounter(dependencies)
+	, isExecuted(false)
+{
+}
+
+TaskState Prothos::Task::getState(){
+	return state;
+}
+
+void Prothos::Task::executeTask(){
+	execute();
+	isExecuted = true;
+}
+
+void Prothos::Task::expandTask(){
+	state = Expanded;
+	expand();
+}
 
 void Prothos::Task::addChild(Task* task){
 	successors.push_back(task);
 	task->addParent(this);
+	if(state == Zombie){
+		task->dependencyCounter--;
+		if(task->isReady()){
+			LocalScheduler::getLocalScheduler().scheduleTask(task);
+		}
+	}
 }
 
 void Prothos::Task::addParent(Task* task){
 	predecessors.push_back(task);
-	dependencyCounter++;
 }
 
 void Prothos::Task::doneExpanding(){
-	expansionState = TaskState::AllSuccessorsKnown;
+	state = TaskState::Expanded;
 }
 
-bool Prothos::Task::notifySuccessors(){
-	if(expansionState == TaskState::AllSuccessorsKnown){
-		for(auto successor : successors){
-			successor->dependencyCounter--;
-		}
-		return true;
+void Prothos::Task::notifySuccessors(){
+	for(auto successor : successors){
+		successor->dependencyCounter--;
 	}
-	return false;
+	state = Zombie;
 }
 
 std::vector<Task*> Prothos::Task::getSuccessors(){
