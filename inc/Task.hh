@@ -1,6 +1,8 @@
 #pragma once
 #include <list>
 #include <vector>
+#include <string>
+#include <iostream>
 
 namespace Prothos{
 
@@ -31,6 +33,23 @@ private:
 	std::vector<Task*> predecessors;
 	std::vector<Task*> successors;
 	bool isExecuted;
+};
+
+class MsgTask : public Task{
+	public:
+		MsgTask(std::string str)
+			: Task(Expanded, 0)
+			, str(str)
+		{}
+
+		void execute() override{
+			std::cout << str << std::endl;
+		}
+
+		void expand() override {}
+
+	private:
+		std::string str;
 };
 
 } //Prothos
