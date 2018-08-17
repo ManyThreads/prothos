@@ -1,4 +1,3 @@
-#include "FlowGraph.hh"
 #include "Prothos.hh"
 
 #include <iostream>
@@ -46,7 +45,11 @@ int main(){
 	//hfn.pushValue(FlowGraph::GenericMsg());
 
 		
-	prothos_push_task(new MsgTask("Hello World"));
+	new MsgTask("Hello World");
+
+	(new MsgDagTask(0,"What's ")) -> addSucc(new MsgDagTask(1,"up?"));
+
+
 
 	prothos_finalize();
 

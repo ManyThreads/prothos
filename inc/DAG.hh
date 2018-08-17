@@ -1,4 +1,7 @@
 #pragma once
+
+#include "Task.hh"
+
 #include <list>
 #include <vector>
 #include <string>
@@ -6,23 +9,42 @@
 
 namespace Prothos{
 
-enum TaskState{
-	Dormant,
-	Ready,
-	Executed
-};
-
-class Task{
+class DagTask : public Task {
 public:
-	Task();
-	virtual ~Task(){};
-	void executeTask();
-	void expandTask();
-	TaskState getState();
-	void setState(TaskState state);
+	DagTask(int dependencies)
+		: deps(dependencies)
+	{
+		if(deps == 0){
+			setState(Ready);
+		}
+	}
+
+	virtual ~DagTask(){};
+
+	void execute(){
+		body();
+		notifySuccessors();	
+	};
+
+	void addSucc(DagTask* task){
+		succ.push_back(task);
+	}
 private:
-	virtual void execute() = 0;
-	TaskState state;
+	virtual void body() = 0;
+
+	void notifySuccessors(){
+		for(auto s : succ){
+			s->decDeps();
+		}
+	}
+	
+	void decDeps(){
+		deps--;
+		if(deps == 0) setState(Ready);
+	}
+
+	std::vector<DagTask*> succ;
+	int deps;
 };
 
 //class Task{
@@ -43,21 +65,18 @@ private:
 	//virtual void expand() = 0;
 	//TaskState state;
 	//int dependencyCounter;
-	//std::vector<Task*> predecessors;
-	//std::vector<Task*> successors;
 	//bool isExecuted;
 //};
 
-class MsgTask : public Task{
+class MsgDagTask : public DagTask{
 	public:
-		MsgTask(std::string str)
-			: Task()
+		MsgDagTask(int deps, std::string str)
+			: DagTask(deps)
 			, str(str)
 		{
-			setState(Ready);
 		}
 
-		void execute() override{
+		void body() override{
 			std::cout << str << std::endl;
 		}
 

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Task.hh"
+#include "DAG.hh"
 #include "Worker.hh"
 #include "Singleton.hh"
 

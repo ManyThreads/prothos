@@ -14,7 +14,6 @@ class Worker{
 	public:
 		void run(){
 			while(taskQueue.size() > 0){
-				std::cout << "exec Task" << std::endl;
 				Task* nextTask = taskQueue.pop();
 				nextTask->executeTask();
 				
