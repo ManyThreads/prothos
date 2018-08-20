@@ -14,7 +14,7 @@ static void runWorker(){
 
 void Prothos::prothos_init(){
 	int numCPU = std::thread::hardware_concurrency();
-	std::cout << "Running on " << numCPU << "cores." << std::endl;
+	std::cout << "Running on " << numCPU << " cores." << std::endl;
 
 	//threads.resize(numCPU - 1);
 

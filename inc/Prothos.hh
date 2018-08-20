@@ -4,6 +4,7 @@
 #include "DAG.hh"
 #include "Worker.hh"
 #include "Singleton.hh"
+#include "FlowGraph.hh"
 
 namespace Prothos{
 

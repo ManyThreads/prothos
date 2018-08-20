@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Task.hh"
-#include "LocalScheduler.hh"
+#include "DAG.hh"
+//#include "LocalScheduler.hh"
 
 #include <iostream>
 #include <vector>
@@ -13,13 +13,49 @@
 namespace Prothos{
 namespace FlowGraph{
 
+static const int MaxDecodingDepth = 5; // (-1) for infinite unrolling
+
+class FlowGraphTask : public DagTask{
+	public:
+		FlowGraphTask(int deps)
+			: DagTask(deps)
+			, expanded(false)
+		{
+			//std::cout << __func__ << std::endl;
+		}
+
+		virtual void expand(int depth) = 0;
+		
+		void body(){
+			preprocessing();
+			bodyFunc();
+			postprocessing();
+		}
+
+	protected:
+		virtual void releaseParentTask() { 
+			//todo: garbage collection
+		};
+
+		virtual void preprocessing() {}
+
+		virtual void bodyFunc() = 0;
+
+		virtual void postprocessing() {
+			releaseParentTask();
+			if(!expanded) expand(MaxDecodingDepth);
+		}
+
+		bool expanded;
+};
+
 template<typename T> 
 class Future;
 
 template<typename T>
 class Promise{
 	public:
-		Promise(Task& myTask)
+		Promise(FlowGraphTask& myTask)
 			: refCount(0)
 			, myTask(myTask)
 	{}
@@ -33,7 +69,7 @@ class Promise{
 		}
 
 		void registerFuture(Future<T> &f){
-			myTask.addChild(&f.getTask());
+			myTask.addSucc(&f.getTask());
 		}
 
 		T& getVal(){
@@ -49,7 +85,7 @@ class Promise{
 	private:
 		T val;
 		size_t refCount;
-		Task& myTask;
+		FlowGraphTask& myTask;
 };
 
 template<typename T>
@@ -60,7 +96,7 @@ class Future{
 			, myTask(nullptr)
 		{}
 
-		Future(Promise<T> *promise, Task* myTask)
+		Future(Promise<T> *promise, FlowGraphTask* myTask)
 			: prom(promise)
 			, myTask(myTask)
 		{
@@ -74,7 +110,7 @@ class Future{
 			prom = promise;
 		}
 
-		void setTask(Task *task){
+		void setTask(FlowGraphTask *task){
 			assert(task);
 			myTask = task;
 		}
@@ -84,7 +120,7 @@ class Future{
 			return prom->getVal();
 		}
 
-		Task& getTask(){
+		FlowGraphTask& getTask(){
 			assert(myTask);
 			return *myTask;
 		}
@@ -97,22 +133,22 @@ class Future{
 		
 	private:
 		Promise<T>* prom; //use pointer, so prom can be deleted
-		Task* myTask;
+		FlowGraphTask* myTask;
 		
 };
 
 template<typename T>
-class DummyInputTask : public Task{
+class DummyInputTask : public FlowGraphTask{
 	public:
 		DummyInputTask(const T &t)
-		: Task(Zombie, 0)
+		: FlowGraphTask(0)
         , prom(*this)
 		{
 			prom.write(t);
 		}
 
-		void execute() override {};
-		void expand() override {};
+		void bodyFunc() override {};
+		void expand(int depth) override {};
 
 		Promise<T> prom;
 };
@@ -121,10 +157,10 @@ class DummyInputTask : public Task{
 class GenericMsg{};
 
 template<typename NodeType, typename Input, typename Output>
-class ApplyBodyTask : public Task{
+class ApplyBodyTask : public FlowGraphTask{
 public:
 	ApplyBodyTask(NodeType &n, Promise<Input> &p)
-		: Task(TaskState::SuccessorsUnknown, 1)
+		: FlowGraphTask(1)
 		, myNode(n)
 		, myInput(&p, this)
 		, myOutput(*this)
@@ -132,15 +168,19 @@ public:
 		p.registerFuture(myInput);
 	}
 
-	void execute() override{
+	void bodyFunc() override{
 		myOutput.write(myNode.applyBody(myInput.getVal()));
 		myInput.release();
 	};
 
-	void expand() override{
+	void expand(int depth) override{
 		for(auto n : myNode.successors()){
-			n->pushPromise(myOutput);
-		}	
+			FlowGraphTask *t = n->pushPromise(myOutput);
+			if(t != nullptr && depth != 0){
+				t->expand(depth > 0 ? depth - 1 : depth);
+			}
+		}
+		expanded = true;	
 	}
 
 	Output *getOutput(){
@@ -178,8 +218,9 @@ class FunctionBodyLeaf : public FunctionBody<Input, Output> {
 template<typename Input>
 class Receiver{
 	public:
-		virtual Task *pushPromise(Promise<Input> &p) = 0;
-		Task* pushValue(const Input &i){
+		virtual FlowGraphTask *pushPromise(Promise<Input> &p) = 0;
+		FlowGraphTask* pushValue(const Input &i){
+			//std::cout << __func__ << std::endl;
 			DummyInputTask<Input> *t = new DummyInputTask<Input>(i);
 			return pushPromise(t->prom);
 		}
@@ -219,7 +260,8 @@ class FunctionInput : public Receiver<Input>{
 			return (*myBody)(i); 
 		}	
 
-		Task *pushPromise(Promise<Input> &p) override {
+		FlowGraphTask *pushPromise(Promise<Input> &p) override {
+			//std::cout << __func__ << std::endl;
 			return new ApplyBodyTask<FunctionInput<Input, Output>, Input, Output>(*this, p);
 		}
 
@@ -272,7 +314,7 @@ class QueueingInputPort : public Receiver<Input>{
 			handler = h;
 		}
 
-		Task *pushPromise(Promise<Input> &p) override {
+		FlowGraphTask *pushPromise(Promise<Input> &p) override {
 			p.reserve();
 			prom.push_back(&p);
 			assert(handler);
@@ -301,10 +343,10 @@ struct JoinMsg : public GenericMsg{
 };
 
 template<typename NodeType, typename Input, typename Output, size_t NumPorts>
-class JoinTask : public Task{
+class JoinTask : public FlowGraphTask{
 public:
 	JoinTask(NodeType &n, std::array<Promise<Input>*, NumPorts> &p)
-		: Task(TaskState::SuccessorsUnknown, NumPorts)
+		: FlowGraphTask(NumPorts)
 		, myNode(n)
 		, myOutput(*this)
 	{
@@ -316,7 +358,7 @@ public:
 		}
 	}
 
-	void execute() override{
+	void bodyFunc() override{
 		JoinMsg<Input> msg;
 		for(auto &i : myInput){
 			msg.elements.push_back(i.getVal());
@@ -325,9 +367,12 @@ public:
 		myOutput.write(msg);
 	};
 
-	void expand() override{
+	void expand(int depth) override{
 		for(auto n : myNode.successors()){
-			n->pushPromise(myOutput);
+			FlowGraphTask *t = n->pushPromise(myOutput);
+			if(t != nullptr && depth != 0){
+				t->expand(depth > 0 ? depth - 1 : depth);
+			}
 		}	
 	}
 
