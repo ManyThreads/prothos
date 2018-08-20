@@ -45,9 +45,9 @@ void Prothos::prothos_init(){
 	//}
 }
 
-void Prothos::prothos_push_task(Task *t){
-	Prothos::LocalWorker::getInstance()->taskQueue.push(t);
-}
+//void Prothos::prothos_push_task(Task *t){
+	//Prothos::LocalWorker::getInstance()->taskQueue.push(t);
+//}
 
 void Prothos::prothos_finalize(){
 	////LocalScheduler::getLocalScheduler().waitForAll();
