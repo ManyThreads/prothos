@@ -1,7 +1,7 @@
 #pragma once
 
 #include "DAG.hh"
-//#include "LocalScheduler.hh"
+#include "Worker.hh"
 
 #include <iostream>
 #include <vector>
@@ -14,6 +14,40 @@ namespace Prothos{
 namespace FlowGraph{
 
 static const int MaxDecodingDepth = 5; // (-1) for infinite unrolling
+
+class Graph{
+	public: 
+		Graph(){}
+		//void incOpenTask(int num = 1){
+			//openTasks += num;
+		//}
+
+		//void decOpenTasks(int num = 1){
+			//openTasks -= num;
+		//}
+		
+		//void waitForAll(){
+			//while(openTasks != 0){
+				//Prothos::LocalWorker::getInstance()->runWithoutBlocking();
+				
+			//}
+		//}
+
+	//private:
+			
+		//int openTasks;
+};
+
+class GraphNode{
+	public:
+		GraphNode(Graph &g)
+			: g(g)
+		{}
+
+		
+	private:
+		Graph &g;
+};
 
 class FlowGraphTask : public DagTask{
 	public:
@@ -275,11 +309,12 @@ class FunctionInput : public Receiver<Input>{
 	
 };
 
-class FunctionNode : public FunctionInput<GenericMsg, GenericMsg>, public Sender<GenericMsg>{
+class FunctionNode : public GraphNode, public FunctionInput<GenericMsg, GenericMsg>, public Sender<GenericMsg>{
 	public:
 		template<typename Body>
-		FunctionNode(Body body)
-			: FunctionInput<GenericMsg, GenericMsg>(body)
+		FunctionNode(Graph &g, Body body)
+			: GraphNode(g)
+			, FunctionInput<GenericMsg, GenericMsg>(body)
 		{}
 		
 		std::vector<Receiver<GenericMsg>*> successors(){
@@ -423,9 +458,11 @@ class JoinInput : public Handler{
 };
 
 template <size_t NumPorts>
-class JoinNode : public JoinInput<GenericMsg, GenericMsg, NumPorts>, public Sender<GenericMsg>{
+class JoinNode : public GraphNode, public JoinInput<GenericMsg, GenericMsg, NumPorts>, public Sender<GenericMsg>{
 	public:
-		JoinNode(){};
+		JoinNode(Graph &g)
+			: GraphNode(g)
+		{};
 
 		std::vector<Receiver<GenericMsg>*> successors(){
 			return Sender<GenericMsg>::successors();

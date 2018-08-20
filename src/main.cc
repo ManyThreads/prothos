@@ -9,7 +9,6 @@ static void TaskBench(benchmark::State& state){
 	for (auto _ : state){
 		prothos_init();
 		
-		/* Testing Task */	
 		new MsgTask("Hello World");
 
 		prothos_finalize();
@@ -20,7 +19,6 @@ static void DagBench(benchmark::State& state){
 	for (auto _ : state){
 		prothos_init();
 		
-		/* Testing DAG Task Graph */	
 		(new MsgDagTask(0,"What's ")) -> addSucc(new MsgDagTask(1,"up?"));
 
 		prothos_finalize();
@@ -31,30 +29,31 @@ static void DagBench(benchmark::State& state){
 static void FlowGraphBench(benchmark::State& state){
 	for (auto _ : state){
 		prothos_init();
+	
+		FlowGraph::Graph g;
 		
-		/* Testing FlowGraph */	
-		FlowGraph::FunctionNode hfn([](FlowGraph::GenericMsg){
+		FlowGraph::FunctionNode hfn(g, [](FlowGraph::GenericMsg){
 					std::cout << "Hello ";
 					return FlowGraph::GenericMsg();
 				}
 		);
 
-		FlowGraph::FunctionNode cfn([](FlowGraph::GenericMsg){
+		FlowGraph::FunctionNode cfn(g, [](FlowGraph::GenericMsg){
 					std::cout << "cruel ";
 					return FlowGraph::GenericMsg();
 				}
 		);
 
 
-		FlowGraph::FunctionNode wfn([](FlowGraph::GenericMsg){
+		FlowGraph::FunctionNode wfn(g, [](FlowGraph::GenericMsg){
 					std::cout << "world" << std::endl;
 					return FlowGraph::GenericMsg();
 				}
 		);
 
-		FlowGraph::JoinNode<2> jn;
+		FlowGraph::JoinNode<2> jn(g);
 
-		FlowGraph::FunctionNode lfn([](FlowGraph::GenericMsg){
+		FlowGraph::FunctionNode lfn(g, [](FlowGraph::GenericMsg){
 					std::cout << "!!!!!" << std::endl;
 					return FlowGraph::GenericMsg();
 				}
@@ -69,6 +68,7 @@ static void FlowGraphBench(benchmark::State& state){
 		hfn.pushValue(FlowGraph::GenericMsg());
 
 
+		//g.waitForAll();
 		prothos_finalize();
 	}
 }
