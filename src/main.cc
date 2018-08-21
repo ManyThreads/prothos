@@ -25,15 +25,24 @@ static void DagBench(benchmark::State& state){
 	}
 }
 
-
 static void FlowGraphBench(benchmark::State& state){
 	for (auto _ : state){
 		prothos_init();
 	
 		FlowGraph::Graph g;
-		
-		FlowGraph::FunctionNode hfn(g, [](FlowGraph::GenericMsg){
-					std::cout << "Hello ";
+	
+		int counter = 10;
+		FlowGraph::SourceNode sn(g, [&](FlowGraph::GenericMsg &m) -> bool{ 
+				std::cout << "Source Node " << counter << std::endl;
+				m.ptr = new int(counter);
+				if(0 < counter--) 
+					return true;
+				else 
+					return false;
+		});
+
+		FlowGraph::FunctionNode hfn(g, [](FlowGraph::GenericMsg m){
+					std::cout << "Hello " << *static_cast<int*>(m.ptr);
 					return FlowGraph::GenericMsg();
 				}
 		);
@@ -59,25 +68,24 @@ static void FlowGraphBench(benchmark::State& state){
 				}
 		);
 
+		FlowGraph::makeEdge(sn, hfn);
 		FlowGraph::makeEdge(hfn, cfn);
 		FlowGraph::makeEdge(cfn, wfn);
-		FlowGraph::makeEdge(cfn, jn.getInPort(0));
-		FlowGraph::makeEdge(wfn, jn.getInPort(1));
-		FlowGraph::makeEdge(jn, lfn);
+		//FlowGraph::makeEdge(cfn, jn.getInPort(0));
+		//FlowGraph::makeEdge(wfn, jn.getInPort(1));
+		//FlowGraph::makeEdge(jn, lfn);
 
-		hfn.pushValue(FlowGraph::GenericMsg());
+		//hfn.pushValue(FlowGraph::GenericMsg());
 
 
+		sn.activate();
 		//g.waitForAll();
 		prothos_finalize();
 	}
 }
 
-//int main(){
-	BENCHMARK(TaskBench);
-	BENCHMARK(DagBench);
+	//BENCHMARK(TaskBench);
+	//BENCHMARK(DagBench);
 	BENCHMARK(FlowGraphBench);
 	
 	BENCHMARK_MAIN();
-	//return 0;
-//}

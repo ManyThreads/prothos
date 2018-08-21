@@ -188,7 +188,10 @@ class DummyInputTask : public FlowGraphTask{
 };
 
 // Since AnyDSL does not need typed messages use a generic message type as placeholder
-class GenericMsg{};
+class GenericMsg{
+	public:
+		void* ptr;
+};
 
 template<typename NodeType, typename Input, typename Output>
 class ApplyBodyTask : public FlowGraphTask{
@@ -278,6 +281,8 @@ class Sender{
 
 	private:
 		std::vector<Receiver<Output>* > mySuccessors;
+	
+	friend class SourceNode;
 };
 
 template<typename Input, typename Output>
@@ -462,11 +467,98 @@ class JoinNode : public GraphNode, public JoinInput<GenericMsg, GenericMsg, NumP
 	public:
 		JoinNode(Graph &g)
 			: GraphNode(g)
-		{};
+		{}
 
 		std::vector<Receiver<GenericMsg>*> successors(){
 			return Sender<GenericMsg>::successors();
 		}	
+
+};
+
+template<typename Input, typename Output>
+class SourceBody{
+	public:
+		virtual ~SourceBody(){};
+		virtual Output operator()(Input &i) = 0;
+};
+
+template<typename Input, typename Output, typename Body>
+class SourceBodyLeaf : public SourceBody<Input, Output> {
+	public:
+		SourceBodyLeaf( Body body)
+			: myBody(body)
+		{}
+
+		Output operator() (Input &i){
+			return myBody(i);
+		}
+
+	private:
+		Body myBody;
+};
+
+template<typename NodeType, typename Output>
+class SourceTask : public FlowGraphTask{
+public:
+	SourceTask(NodeType &n)
+		: FlowGraphTask(0)
+		, myNode(n)
+	{
+	}
+
+	void bodyFunc() override{
+		Output o;
+		while(myNode.applyBody(o)){
+			Promise<Output> *p = new Promise<Output>(*this);
+			p->write(o);
+			for(auto n : myNode.successors()){
+				/*FlowGraphTask *t = */n->pushPromise(*p);
+				//if(t != nullptr && depth != 0){
+					//t->expand(depth > 0 ? depth - 1 : depth);
+				//}
+			}
+
+		}
+	};
+
+	void expand(int depth) override{
+		expanded = true;	
+	}
+
+private:
+	NodeType &myNode;
+};
+
+class SourceNode : public GraphNode, public Sender<GenericMsg>{
+	public:
+		typedef SourceBody<GenericMsg&, bool> SourceBodyType;
+
+		template<typename Body>
+		SourceNode(Graph &g, Body body)
+			: GraphNode(g)
+			, myBody(new SourceBodyLeaf<GenericMsg&, bool, Body>(body))
+		{}
+
+		~SourceNode(){
+			delete myBody;
+		}
+
+		std::vector<Receiver<GenericMsg>*> successors(){
+			return Sender<GenericMsg>::successors();
+		}
+
+		void activate(){
+			new SourceTask<SourceNode, GenericMsg>(*this);
+		}	
+
+	private:
+		bool applyBody(GenericMsg &m){
+			return (*myBody)(m);	
+		}
+
+		SourceBodyType *myBody;
+
+	template<typename NodeType, typename Output> friend class SourceTask;
 };
 
 } //FlowGraph
