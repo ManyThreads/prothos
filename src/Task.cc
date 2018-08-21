@@ -12,7 +12,7 @@ Prothos::Task::Task()
 void Prothos::Task::setState(TaskState state){
 	this->state = state;
 	if(state == Ready){
-		Prothos::LocalWorker::getInstance()->taskQueue.push(this);
+		Prothos::LocalWorker::getInstance()->pushTask(this);
 	}
 }
 
