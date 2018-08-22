@@ -3,6 +3,7 @@
 #include "Task.hh"
 #include "Singleton.hh"
 
+#include <unistd.h>
 #include <iostream>
 
 namespace Prothos{
@@ -10,7 +11,7 @@ namespace Prothos{
 class Worker;
 typedef PerThreadSingleton<Worker> LocalWorker;
 
-static const unsigned StealAttempts = 30;
+static const unsigned StealAttempts = 300;
 
 class Worker{
 	public:
@@ -32,6 +33,7 @@ class Worker{
 						t->executeTask();
 						break;
 					}
+					usleep(100);
 				}
 				//std::cout << "I'm bored to death :(" << std::endl;
 				return;

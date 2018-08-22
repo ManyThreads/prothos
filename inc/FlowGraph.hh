@@ -2,6 +2,7 @@
 
 #include "DAG.hh"
 #include "Worker.hh"
+#include "FifoQueue.hh"
 
 #include <iostream>
 #include <vector>
@@ -105,6 +106,7 @@ class Promise{
 		void registerFuture(Future<T> &f){
 			myTask.addSucc(&f.getTask());
 		}
+#include <mutex>
 
 		T& getVal(){
 			return val;
@@ -356,25 +358,24 @@ class QueueingInputPort : public Receiver<Input>{
 
 		FlowGraphTask *pushPromise(Promise<Input> &p) override {
 			p.reserve();
-			prom.push_back(&p);
+			prom.push(&p);
 			assert(handler);
 			handler->handle();
 			return nullptr;
 		}
 		
 		bool hasPromise(){ 
-			return !prom.empty(); 
+			return prom.size() > 0; 
 		}
 
 		Promise<Input> *getPromise(){ 
-			Promise<Input> *ret = prom.back();
-			prom.pop_back();
+			Promise<Input> *ret = prom.pop();
 			return ret; 
 		}
 
 	private:
 		Handler *handler;
-		std::vector<Promise<Input>* > prom;
+		FifoQueue<Promise<Input>*> prom;
 };
 
 template<typename T>
@@ -385,17 +386,18 @@ struct JoinMsg : public GenericMsg{
 template<typename NodeType, typename Input, typename Output, size_t NumPorts>
 class JoinTask : public FlowGraphTask{
 public:
-	JoinTask(NodeType &n, std::array<Promise<Input>*, NumPorts> &p)
+	JoinTask(NodeType &n, std::array<Promise<Input>*, NumPorts> *p)
 		: FlowGraphTask(NumPorts)
 		, myNode(n)
 		, myOutput(*this)
 	{
 		for(size_t i = 0; i < NumPorts; i++){
 			myInput[i].setTask(this);
-			myInput[i].setProm(p[i]);
-			p[i]->registerFuture(myInput[i]);
-			p[i]->release();
+			myInput[i].setProm((*p)[i]);
+			(*p)[i]->registerFuture(myInput[i]);
+			(*p)[i]->release();
 		}
+		delete p;
 	}
 
 	void bodyFunc() override{
@@ -430,8 +432,10 @@ template <typename Input, typename Output, size_t NumPorts>
 class JoinInput : public Handler{
 	public:
 		JoinInput()
+			: mutex(new std::mutex)
 		{
 			for(auto &i : inPorts){
+				//i = QueueingInputPort<Input>();
 				i.setHandler(this);
 			}	
 		};
@@ -447,18 +451,21 @@ class JoinInput : public Handler{
 		virtual std::vector<Receiver<GenericMsg>*> successors() = 0;
 	private:
 		void tryJoinTask() {
-			for(auto i : inPorts){
+			std::lock_guard<std::mutex> mlock(*mutex);
+			for(auto &i : inPorts){
 				if(!i.hasPromise())
 					return;
 			}
-			std::array<Promise<Input>*, NumPorts> pred;
+			std::array<Promise<Input>*, NumPorts> *pred = new std::array<Promise<Input>*, NumPorts>;
 			for(size_t i = 0; i < NumPorts; i++){
-				pred[i] = inPorts[i].getPromise();	
+				(*pred)[i] = inPorts[i].getPromise();	
+				assert((*pred)[i] != nullptr);
 			}
 			new JoinTask<JoinInput<Input, Output, NumPorts>, Input, Output, NumPorts>(*this, pred);
 		}
 
 		std::array<QueueingInputPort<Input>, NumPorts> inPorts;
+		std::mutex *mutex;
 		
 };
 

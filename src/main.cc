@@ -27,11 +27,10 @@ static void DagBench(benchmark::State& state){
 
 static void FlowGraphBench(benchmark::State& state){
 	for (auto _ : state){
-		prothos_init();
 	
 		FlowGraph::Graph g;
 	
-		int counter = 10;
+		int counter = 100;
 		FlowGraph::SourceNode sn(g, [&](FlowGraph::GenericMsg &m) -> bool{ 
 				std::cout << "Source Node " << counter << std::endl;
 				m.ptr = new int(counter);
@@ -71,13 +70,14 @@ static void FlowGraphBench(benchmark::State& state){
 		FlowGraph::makeEdge(sn, hfn);
 		FlowGraph::makeEdge(hfn, cfn);
 		FlowGraph::makeEdge(cfn, wfn);
-		//FlowGraph::makeEdge(cfn, jn.getInPort(0));
-		//FlowGraph::makeEdge(wfn, jn.getInPort(1));
-		//FlowGraph::makeEdge(jn, lfn);
+		FlowGraph::makeEdge(cfn, jn.getInPort(0));
+		FlowGraph::makeEdge(wfn, jn.getInPort(1));
+		FlowGraph::makeEdge(jn, lfn);
 
 		//hfn.pushValue(FlowGraph::GenericMsg());
 
-
+		asm volatile("" ::: "memory");
+		prothos_init();
 		sn.activate();
 		//g.waitForAll();
 		prothos_finalize();
