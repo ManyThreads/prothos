@@ -11,13 +11,17 @@ Prothos::Task::Task()
 
 void Prothos::Task::setState(TaskState state){
 	this->state = state;
-	if(state == Ready){
-		Prothos::LocalWorker::getInstance()->pushTask(this);
-	}
 }
 
 TaskState Prothos::Task::getState(){
 	return state;
+}
+
+void Prothos::WorkstealingTask::setState(TaskState state){
+	this->state = state;
+	if(state == Ready){
+		Prothos::GlobalWorkerMap::getMap()->getLocalWorker()->pushWsTask(this);
+	}
 }
 
 void Prothos::Task::executeTask(){

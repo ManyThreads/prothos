@@ -1,5 +1,5 @@
 #include "Prothos.hh"
-//#include "LocalScheduler.hh"
+#include "FixedWorkerMap.hh"
 
 #include <pthread.h>
 #include <thread>
@@ -9,13 +9,14 @@ static std::vector<std::thread> threads;
 
 static void runWorker(){
 	//std::cout << "hello" << std::endl;
-	Prothos::LocalWorker::getInstance()->run();
-	Prothos::LocalWorker::deleteInstance();
+	Prothos::GlobalWorkerMap::getMap()->getLocalWorker()->run();
 }
 
 void Prothos::prothos_init(){
 	int numCPU = std::thread::hardware_concurrency();
 	std::cout << "Running on " << numCPU << " cores." << std::endl;
+	
+	GlobalWorkerMap::setInstance(new FixedWorkerMap(numCPU));	
 
 	threads.resize(numCPU - 1);
 
@@ -68,6 +69,8 @@ void Prothos::prothos_finalize(){
 	//}
 	//std::cout << __func__ << std::endl;
 	//Prothos::LocalWorker::getInstance()->run();
+	GlobalWorkerMap::getMap()->getLocalWorker()->pushTask(new TerminationMarkerTask());
 	runWorker();
 	for(auto &t : threads) t.join();
+	GlobalWorkerMap::removeInstance();
 }

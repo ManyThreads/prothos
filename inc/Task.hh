@@ -18,23 +18,30 @@ public:
 	virtual ~Task(){};
 	void executeTask();
 	TaskState getState();
-	void setState(TaskState state);
+	virtual void setState(TaskState state);
 private:
 	virtual void execute() = 0;
 	TaskState state;
+
+	friend class WorkstealingTask;
 };
 
-class MsgTask : public Task{
+class WorkstealingTask : public Task{
+	public:
+		void setState(TaskState state);
+};
+
+class MsgTask : public WorkstealingTask{
 	public:
 		MsgTask(std::string str)
-			: Task()
+			: WorkstealingTask()
 			, str(str)
 		{
 			setState(Ready);
 		}
 
 		void execute() override{
-			std::cout << str << std::endl;
+			std::cerr << str << std::endl;
 		}
 
 	private:

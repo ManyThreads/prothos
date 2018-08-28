@@ -9,7 +9,7 @@
 
 namespace Prothos{
 
-class DagTask : public Task {
+class DagTask : public WorkstealingTask {
 public:
 	DagTask(int dependencies)
 		: deps(dependencies)

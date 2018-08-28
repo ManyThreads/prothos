@@ -8,7 +8,7 @@ using namespace Prothos;
 static void TaskBench(benchmark::State& state){
 	for (auto _ : state){
 		prothos_init();
-		
+
 		new MsgTask("Hello World");
 
 		prothos_finalize();
@@ -27,6 +27,7 @@ static void DagBench(benchmark::State& state){
 
 static void FlowGraphBench(benchmark::State& state){
 	for (auto _ : state){
+		prothos_init();
 	
 		FlowGraph::Graph g;
 	
@@ -74,18 +75,13 @@ static void FlowGraphBench(benchmark::State& state){
 		FlowGraph::makeEdge(wfn, jn.getInPort(1));
 		FlowGraph::makeEdge(jn, lfn);
 
-		//hfn.pushValue(FlowGraph::GenericMsg());
-
-		asm volatile("" ::: "memory");
-		prothos_init();
 		sn.activate();
-		//g.waitForAll();
 		prothos_finalize();
 	}
 }
 
-	//BENCHMARK(TaskBench);
-	//BENCHMARK(DagBench);
+	BENCHMARK(TaskBench);
+	BENCHMARK(DagBench);
 	BENCHMARK(FlowGraphBench);
 	
 	BENCHMARK_MAIN();

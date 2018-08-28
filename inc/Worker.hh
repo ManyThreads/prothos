@@ -1,60 +1,144 @@
 #pragma once
+#include "FifoQueue.hh"
 #include "hlmsDeque.hh"
 #include "Task.hh"
-#include "Singleton.hh"
+#include "WorkerMap.hh"
 
 #include <unistd.h>
 #include <iostream>
+#include <pthread.h>
 
 namespace Prothos{
 
 class Worker;
-typedef PerThreadSingleton<Worker> LocalWorker;
 
-static const unsigned StealAttempts = 300;
+static const unsigned StealAttempts = 10;
 
 class Worker{
 	public:
 		Worker()
-			: running(true)
+			: isIdle(false)
+			, running(true)
 		{}
 
 		void run(){
 			while(running){
 				Task *t;
-				while((t = taskQueue.pop_bottom())){
+				// execute all tasks on work-stealing queue
+				while((t = wsQueue.pop_bottom())){
+					isIdle = false;
 					t->executeTask();
 				}
-				for(unsigned attempt = 0; attempt < StealAttempts; attempt++){
-					Worker *victim = LocalWorker::getRandomInstance();
-					Task *t = victim->tryStealTask();
-					if(t){
-						std::cout << "Task stolen!" << std::endl;
-						t->executeTask();
-						break;
+
+				// execute a task from low priotiy queue
+				if(lpQueue.size() > 0){
+					t = lpQueue.pop();
+					t->executeTask();
+					if(!running){
+						//std::cerr << "Tschau!" << std::endl;
+						return;
 					}
+					continue;
+				}
+
+				Worker *victim = GlobalWorkerMap::getMap()->getRandomWorker();
+				t = victim->tryStealTask();
+				if(t){
+					isIdle = false;
+					//std::cerr << "Task stolen!" << std::endl;
+					t->executeTask();
+				}else{
 					usleep(100);
 				}
-				//std::cout << "I'm bored to death :(" << std::endl;
-				return;
 			}
+			//std::cerr << "Tschau!" << std::endl;
 		}
 
-		void stop(){
-			running = false;
+		// spawn local task
+		void pushWsTask(Task *t){
+			wsQueue.push_bottom(t);
 		}
 
+		// push task from external worker/thread (low priority)
 		void pushTask(Task *t){
-			taskQueue.push_bottom(t);
+			lpQueue.push(t);	
 		}
+
 	
 		Task *tryStealTask(){
-			auto t = taskQueue.pop_top();
+			auto t = wsQueue.pop_top();
 			return t.second;
 		}
+	private:
+		hlms::deque<Task> wsQueue; // Work-Stealing Queue	
+		FifoQueue<Task*> lpQueue; // Low priority Queue
 
+		bool isIdle;
 		bool running;
-		deque<Task> taskQueue;	
+
+		friend class TerminationMarkerTask;
+		friend class TerminationTask;
+};
+
+class TerminationTask : public Task{
+	public:
+		TerminationTask()
+		{
+			Worker* curr = GlobalWorkerMap::getMap()->getLocalWorker();
+			first = curr;
+			//curr->running = false;	
+			setState(Ready);
+		}
+
+		void execute() override {
+			Worker* curr = GlobalWorkerMap::getMap()->getLocalWorker();
+			curr->running = false;
+			Worker* next = GlobalWorkerMap::getMap()->getNextWorker();
+			if(curr != first){
+				next->pushTask(this);
+			}
+
+		}
+	private:
+		Worker* first;
+};
+
+class TerminationMarkerTask : public Task{
+	public:
+		TerminationMarkerTask()
+			: w(nullptr)
+			, cycle(0)
+		{
+			setState(Ready);
+		}
+
+		void execute() override {
+			Worker* curr = GlobalWorkerMap::getMap()->getLocalWorker();
+			if((w == nullptr) || (!curr->isIdle)){
+				curr->isIdle = true;
+				if((w == nullptr) || (cycle > 0)){
+					w = curr;
+					cycle = 0;
+				}
+				Worker* next = GlobalWorkerMap::getMap()->getNextWorker();
+				next->pushTask(this);
+			}else if(w == curr){
+				cycle++;
+				if(cycle >= 2){
+					Worker* next = GlobalWorkerMap::getMap()->getNextWorker();
+					next->pushTask(new TerminationTask);
+				}else{
+					Worker* next = GlobalWorkerMap::getMap()->getNextWorker();
+					next->pushTask(this);
+				}
+			}else{
+				Worker* next = GlobalWorkerMap::getMap()->getNextWorker();
+				next->pushTask(this);
+			}
+		}	
+	private:
+	volatile Worker* w;
+	volatile unsigned cycle;
 };
 
 } //Prothos
