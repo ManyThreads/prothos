@@ -1,36 +1,51 @@
 #pragma once
 #include <list>
 #include <vector>
+#include <string>
+#include <iostream>
 
 namespace Prothos{
 
 enum TaskState{
-	SuccessorsUnknown,
-	Expanded,
-	Zombie
+	Dormant,
+	Ready,
+	Executed
 };
 
 class Task{
 public:
-	Task(TaskState state, int dependencies);
+	Task();
 	virtual ~Task(){};
 	void executeTask();
-	void expandTask();
-	void addChild(Task* task);
-	void addParent(Task* task);
-	void doneExpanding(); //Called when all successor tasks have been generated
-	void notifySuccessors();
-	std::vector<Task*> getSuccessors();
-	bool isReady();
 	TaskState getState();
+	virtual void setState(TaskState state);
 private:
 	virtual void execute() = 0;
-	virtual void expand() = 0;
 	TaskState state;
-	int dependencyCounter;
-	std::vector<Task*> predecessors;
-	std::vector<Task*> successors;
-	bool isExecuted;
+
+	friend class WorkstealingTask;
+};
+
+class WorkstealingTask : public Task{
+	public:
+		void setState(TaskState state);
+};
+
+class MsgTask : public WorkstealingTask{
+	public:
+		MsgTask(std::string str)
+			: WorkstealingTask()
+			, str(str)
+		{
+			setState(Ready);
+		}
+
+		void execute() override{
+			std::cerr << str << std::endl;
+		}
+
+	private:
+		std::string str;
 };
 
 } //Prothos

@@ -1,6 +1,6 @@
 CC := g++
 CFLAGS := -Wall -std=c++14 -g -pthread
-LDFLAGS := -g -lpthread
+LDFLAGS := -g -lpthread -lbenchmark
 
 SRCEXT := cc
 SRCDIR := src

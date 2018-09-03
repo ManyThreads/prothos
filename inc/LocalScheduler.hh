@@ -1,41 +1,41 @@
-#pragma once
-#include <list>
-#include <atomic>
+//#pragma once
+//#include <list>
+//#include <atomic>
 
-#include "FifoQueue.hh"
-#include "Task.hh"
+//#include "FifoQueue.hh"
+//#include "Task.hh"
 
-namespace Prothos{
+//namespace Prothos{
 
-class ExitTask : public Task{
-	public:
-		ExitTask()
-			: Task(Expanded, 0)
-		{}
-		~ExitTask(){}
-		void expand(){}
-		void execute();
-};
+//class ExitTask : public Task{
+	//public:
+		//ExitTask()
+			//: Task(Expanded, 0)
+		//{}
+		//~ExitTask(){}
+		//void expand(){}
+		//void execute();
+//};
 
-class LocalScheduler{
-public:
-	static LocalScheduler &getLocalScheduler();
-	Task* getTask();
-	void scheduleTask(Task* task);
-	void taskDone(Task* task);
+//class LocalScheduler{
+//public:
+	//static LocalScheduler &getLocalScheduler();
+	//Task* getTask();
+	//void scheduleTask(Task* task);
+	//void taskDone(Task* task);
 
-	void schedulerMain();
-	void waitForAll();
+	//void schedulerMain();
+	//void waitForAll();
 
-private:
-	LocalScheduler();
+//private:
+	//LocalScheduler();
 
-	FifoQueue<Task*> readyTasks;
-	FifoQueue<Task*> completedTasks;
-	std::atomic<size_t> openTasks;
-};
+	//FifoQueue<Task*> readyTasks;
+	//FifoQueue<Task*> completedTasks;
+	//std::atomic<size_t> openTasks;
+//};
 
-void thread_main();
+//void thread_main();
 
 
-} //Prothos
+//} //Prothos
