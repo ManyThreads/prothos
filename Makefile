@@ -1,27 +1,7 @@
-CC := g++
-CFLAGS := -Wall -std=c++14 -g -pthread
-LDFLAGS := -g -lpthread -lbenchmark
 
-SRCEXT := cc
-SRCDIR := src
-INCDIR := inc
-BUILDDIR := bin
-TARGET := main
-
-SOURCES := $(wildcard $(SRCDIR)/*.$(SRCEXT))
-OBJECTS := $(patsubst $(SRCDIR)/%.o,$(BUILDDIR)/%.o,$(SOURCES:.$(SRCEXT)=.o))
-
-
-all: $(TARGET)
-
-$(TARGET): $(OBJECTS)
-	$(CC) $(LDFLAGS) -o $(TARGET) $^
-
-$(BUILDDIR)/%.o: $(SRCDIR)/%.$(SRCEXT)
-	$(CC) $< $(CFLAGS) -c -I$(INCDIR) -o $@
+all:
+	./mythos/3rdparty/mcconf/mcconf.py -i prothos-amd64.config
 
 clean:
-	-rm $(TARGET) $(OBJECTS)
-
-run: all
-	./$(TARGET)
+	rm -f *.log
+	rm -rf prothos-amd64
