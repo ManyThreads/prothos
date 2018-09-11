@@ -1,6 +1,6 @@
 #pragma once
 
-#include <ctime>
+//#include <ctime>
 #include <cstdlib>
 
 #if __cplusplus <= 199711L

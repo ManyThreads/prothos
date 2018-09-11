@@ -2,16 +2,15 @@
 
 #include <cstddef>
 #include <array>
-#include <assert.h>
-#include <iostream>
+//#include <assert.h>
 
 //#include "atomic.h"
+#include "shim.hh"
 #include <atomic>
 using namespace std;
 
 namespace hlms{
 
-#include "shim.hh"
 
       template<class T, size_t NODE_SIZE = 1u << 12>
       class deque {
@@ -39,7 +38,7 @@ namespace hlms{
 
           deque_node()
           {
-            assert(reinterpret_cast<size_t>(this) % NODE_SIZE == 0);
+            //assert(reinterpret_cast<size_t>(this) % NODE_SIZE == 0);
 #ifndef NDEBUG
             for (auto& el : data) {
               el.store(reinterpret_cast<pointer_type>(0xDEADBEEF));
@@ -63,9 +62,9 @@ namespace hlms{
           void* operator new(size_t size)
           {
             void* storage = aligned_alloc(size, node_size);
-            if (!storage) {
-              throw std::bad_alloc();
-            }
+            //if (!storage) {
+              //throw std::bad_alloc();
+            //}
             return storage;
           }
 
@@ -78,13 +77,13 @@ namespace hlms{
             std::array<atomic<pointer_type>, array_size> data;
         };
 
-        static_assert(sizeof(deque_node) == deque_node::node_size, "Invalid node size!");
+        //static_assert(sizeof(deque_node) == deque_node::node_size, "Invalid node size!");
 
         struct cas_struct {
 
           static constexpr size_t index_mask = deque_node::node_size-1;
           static constexpr size_t index_offset = 3;
-          static_assert(1 << index_offset == sizeof(pointer_type), "Incorrect index offset.");
+          //static_assert(1 << index_offset == sizeof(pointer_type), "Incorrect index offset.");
           static constexpr size_t tag_mask = (1 << index_offset)-1;
 
           cas_struct() : node(nullptr), index(0), tag(0) {}
@@ -98,10 +97,10 @@ namespace hlms{
 
           void print() const
           {
-            std::cerr
-              << node << '\t'
-              << index << '\t'
-              << tag << '\n';
+            //std::cerr
+              //<< node << '\t'
+              //<< index << '\t'
+              //<< tag << '\n';
           }
 
 
@@ -171,11 +170,11 @@ namespace hlms{
             new_top.index = deque_node::array_size-1;
           }
           auto result = top.node->load(top.index);
-          assert(new_top.encode() != cur_top_code);
+          //assert(new_top.encode() != cur_top_code);
           if (top_code.compare_exchange_strong(cur_top_code, new_top.encode())) {
             delete node_to_free;
             if ((size_t) result == 0xDEADBEEF) {
-              std::cerr << __func__ << deque_node::array_size << '\t' << cas_struct::tag_mask << "t\n";
+              //std::cerr << __func__ << deque_node::array_size << '\t' << cas_struct::tag_mask << "t\n";
               top.print();
               new_top.print();
             }
@@ -226,7 +225,7 @@ namespace hlms{
           delete bottom.node;
         }
         if ((size_t) result == 0xDEADBEEF) {
-          std::cerr << __func__ << deque_node::array_size << "t\n";
+          //std::cerr << __func__ << deque_node::array_size << "t\n";
           top.print();
           bottom.print();
           new_bottom.print();
@@ -261,10 +260,10 @@ namespace hlms{
         result |= this->index << index_offset;
         result |= this->tag & tag_mask;
 #ifndef NDEBUG
-        auto rev = cas_struct::decode(result);
-        assert(this->index == rev.index);
-        assert(this->node == rev.node);
-        assert((this->tag & tag_mask) == rev.tag);
+        //auto rev = cas_struct::decode(result);
+        //assert(this->index == rev.index);
+        //assert(this->node == rev.node);
+        //assert((this->tag & tag_mask) == rev.tag);
 #endif
         return result;
       }

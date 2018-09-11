@@ -28,7 +28,6 @@
 #include "mythos/invocation.hh"
 #include "mythos/protocol/CpuDriverKNC.hh"
 #include "mythos/PciMsgQueueMPSC.hh"
-#include "cpu/hwthread_pause.hh"
 #include "runtime/Portal.hh"
 #include "runtime/ExecutionContext.hh"
 #include "runtime/CapMap.hh"
@@ -36,15 +35,28 @@
 #include "runtime/PageMap.hh"
 #include "runtime/KernelMemory.hh"
 #include "runtime/SimpleCapAlloc.hh"
+#include "runtime/tls.hh"
 #include "app/mlog.hh"
 #include <cstdint>
 #include "util/optional.hh"
+#include "runtime/umem.hh"
+
+#include "runtime/Task.hh"
+#include "runtime/DAG.hh"
+//#include "runtime/Worker.hh"
+#include "runtime/Thread.hh"
+
+#include <vector>
+
+using namespace Prothos;
 
 mythos::InvocationBuf* msg_ptr asm("msg_ptr");
 int main() asm("main");
 
 constexpr uint64_t stacksize = 4*4096;
 char initstack[stacksize];
+char stack[stacksize];
+
 char* initstack_top = initstack+stacksize;
 
 mythos::Portal portal(mythos::init::PORTAL, msg_ptr);
@@ -58,206 +70,141 @@ char threadstack[stacksize];
 char* thread1stack_top = threadstack+stacksize/2;
 char* thread2stack_top = threadstack+stacksize;
 
-/**
- * Centralized barrier based on:
- * - Mellor-CrummeyScott1991a - Algorithms for Scalable Synchronization on Shared-memory Multiprocessors
- */
-class SenseBarrier {
-public:
-  SenseBarrier(size_t count) : _count(count), _counter(count) {}
-
-  typedef unsigned char sense_t;
-
-  static void init(sense_t& local_sense) { local_sense = false; }
-  void wait(sense_t& local_sense)
-  {
-    local_sense = !local_sense;
-    if (_counter.fetch_sub(1) == 1) {
-      _counter.store(_count);
-      _global_sense.store(local_sense);
-    } else {
-      while (_global_sense.fetch_or(0) != local_sense) {
-        mythos::hwthread_pollpause();
-      }
-    }
-  }
-
-private:
-  size_t _count;
-  std::atomic<size_t> _counter{0};
-  std::atomic<sense_t> _global_sense{false};
-};
-
-template<class D>
-class TcbBase {
-public:
-  typedef D tcb_t;
-private:
-  tcb_t* _this;
-public:
-  TcbBase() : _this(static_cast<tcb_t*>(this)) {};
-
-  uintptr_t gs()
-  {
-    return uintptr_t(&_this);
-  }
-
-  static tcb_t& local() {
-      tcb_t* ptr;
-      static_assert(sizeof(ptr) == 8, "Expected different pointer size.");
-      asm("movq %%gs:0,%0" : "=r" (ptr));
-      return *ptr;
-  };
-};
-
-template<class T>
-class ManualLifetime {
-public:
-
-  template<class... ARGS>
-  T& create(ARGS&&... args) {
-    new(&_storage->_obj) T(std::forward<ARGS>(args)...);
-    return _storage._obj;
-  }
-
-  void destroy() {_storage->_obj.~T(); }
-
-  T& operator*() { return _storage._obj; }
-  T const& operator*() const { return _storage._obj; }
-
-  T* operator->() { return &_storage._obj; }
-  T const* operator->() const { return &_storage._obj; }
-
-private:
-  union Storage {
-    Storage() {};
-    ~Storage() {};
-    T _obj;
-  } _storage;
-};
-
-class Thread : public TcbBase<Thread> {
-public:
-  static constexpr size_t STACK_SIZE = 4096;
-  // parameters for starting
-  size_t rank = 0;
-  size_t pages = 0;
-  // created by main thread
-  ManualLifetime<mythos::Portal> portal;
-  ManualLifetime<mythos::Frame> ib;
-  size_t ib_offset;
-  ManualLifetime<mythos::ExecutionContext> ec;
-  ManualLifetime<mythos::CapMap> cs;
-  mythos::CapPtr sc = mythos::null_cap;
-  mythos::CapPtr pml4 = mythos::null_cap;
-  // created by this thread
-  mythos::CapPtr pml3cc = mythos::null_cap;
-  mythos::CapPtr pml3nc = mythos::null_cap;
-  SenseBarrier* barrier;
-  SenseBarrier::sense_t local_sense;
-
-  uint8_t stack[STACK_SIZE];
-
-  mythos::optional<void> start(mythos::PortalLock& pl);
-
-  static void* startup(void* ctx) { static_cast<Thread*>(ctx)->startup(); return nullptr; }
-  void startup();
-};
-
-mythos::optional<void> Thread::start(mythos::PortalLock& pl)
-{
-  { // create portal
-    auto res = portal->create(pl, kmem).wait();
-    if (!res) return res;
-  }
-  { // create EC
-    auto res = ec->create(pl, kmem, myAS, myCS, sc,
-        &stack[STACK_SIZE], &startup, this).wait();
-    if (!res) return res;
-  }
-  { // bind portal
-    auto res = portal->bind(pl, *ib, ib_offset, ec->cap()).wait();
-    if (!res) return res;
-  }
-  mythos::syscall_notify(ec->cap());
-}
-
-  void Thread::startup()
-  {
-    // init without portal
-    barrier->init(local_sense);
-    // wait for signal ... this is not save unless an additional flag is checked
-    mythos::ISysretHandler::handle(mythos::syscall_wait());
-    mythos::PortalLock pl(*portal);
-    { // set up access to Thread via Thread::local()
-      auto res = ec->setFSGS(pl, 0u, gs()).wait();
-      ASSERT(res);
-    }
-    barrier->wait(local_sense);
-    // set up local cap map
-    //cs->create(pl, kmem, 6, 4, 0); // <- global cap map
-    {
-      auto res = cs->create(pl, kmem, 6, 16, 0);
-      ASSERT(res);
-    }
-    // - reference caps from init CS
-    // insert it into global CS
-    // create 2 PML2 tables (CC+NC)
-    // create 2 PML3 tables (CC+NC)
-    barrier->wait(local_sense);
-    // create PML4 table
-    // - 1. PML3 from init AS
-    // - own CC PML3
-    // - other PML3 as NC
-    // switch to new cap map
-    // switch to new address space
-    barrier->wait(local_sense);
-    // todo: do sth. productive
-  }
-
-
-
-template<size_t SIZE>
-class ThreadGroup {
-public:
-  ThreadGroup(mythos::CapPtr cap);
-  mythos::optional<void> start(mythos::PortalLock& pl);
-private:
-  static constexpr const size_t num_threads = SIZE;
-  Thread thread[SIZE];
-  mythos::CapMap cs;
-};
-
-template<size_t SIZE>
-ThreadGroup<SIZE>::ThreadGroup(mythos::CapPtr cap)
-  : cs(cap)
-{
-}
-
-template<size_t SIZE>
-mythos::optional<void> ThreadGroup<SIZE>::start(mythos::PortalLock& pl)
-{
-  { // set up new global cspace
-    auto res = cs.create(pl, kmem, 6, 4, 0);
-    ASSERT(res);
-  }
-  for (size_t i = 0; i < num_threads; ++i) {
-  }
-}
-
-
 void* thread_main(void* ctx)
 {
   MLOG_INFO(mlog::app, "hello thread!", DVAR(ctx));
   mythos::ISysretHandler::handle(mythos::syscall_wait());
-  MLOG_INFO(mlog::app, "thread resumed from wait", DVAR(ctx), DVAR(&Thread::local()));
+  MLOG_INFO(mlog::app, "thread resumed from wait", DVAR(ctx));
   return 0;
+}
+
+void test_Example()
+{
+  char const obj[] = "hello object!";
+  MLOG_ERROR(mlog::app, "test_Example begin");
+  mythos::PortalLock pl(portal); // future access will fail if the portal is in use already
+  mythos::Example example(capAlloc());
+  TEST(example.create(pl, kmem).wait()); // use default mythos::init::EXAMPLE_FACTORY
+  // wait() waits until the result is ready and returns a copy of the data and state.
+  // hence, the contents of res1 are valid even after the next use of the portal
+  TEST(example.printMessage(pl, obj, sizeof(obj)-1).wait());
+  TEST(capAlloc.free(example,pl));
+  // pl.release(); // implicit by PortalLock's destructor
+  MLOG_ERROR(mlog::app, "test_Example end");
+}
+
+void test_Portal()
+{
+  MLOG_ERROR(mlog::app, "test_Portal begin");
+  mythos::PortalLock pl(portal); // future access will fail if the portal is in use already
+  MLOG_INFO(mlog::app, "test_Portal: allocate portal");
+  uintptr_t vaddr = 22*1024*1024; // choose address different from invokation buffer
+  // allocate a portal
+  mythos::Portal p2(capAlloc(), (void*)vaddr);
+  auto res1 = p2.create(pl, kmem).wait();
+  TEST(res1);
+  // allocate a 2MiB frame
+  MLOG_INFO(mlog::app, "test_Portal: allocate frame");
+  mythos::Frame f(capAlloc());
+  auto res2 = f.create(pl, kmem, 2*1024*1024, 2*1024*1024).wait();
+  MLOG_INFO(mlog::app, "alloc frame", DVAR(res2.state()));
+  TEST(res2);
+  // map the frame into our address space
+  MLOG_INFO(mlog::app, "test_Portal: map frame");
+  auto res3 = myAS.mmap(pl, f, vaddr, 2*1024*1024, 0x1).wait();
+  MLOG_INFO(mlog::app, "mmap frame", DVAR(res3.state()),
+            DVARhex(res3->vaddr), DVARhex(res3->size), DVAR(res3->level));
+  TEST(res3);
+  // bind the portal in order to receive responses
+  MLOG_INFO(mlog::app, "test_Portal: configure portal");
+  auto res4 = p2.bind(pl, f, 0, mythos::init::EC).wait();
+  TEST(res4);
+  // and delete everything again
+  MLOG_INFO(mlog::app, "test_Portal: delete frame");
+  TEST(capAlloc.free(f, pl));
+  MLOG_INFO(mlog::app, "test_Portal: delete portal");
+  TEST(capAlloc.free(p2, pl));
+  MLOG_ERROR(mlog::app, "test_Portal end");
+}
+
+void test_float()
+{
+  MLOG_INFO(mlog::app, "testing user-mode floating point");
+
+  volatile float x = 5.5;
+  volatile float y = 0.5;
+
+  float z = x*y;
+
+  TEST_EQ(int(z), 2);
+  TEST_EQ(int(1000*(z-float(int(z)))), 750);
+  MLOG_INFO(mlog::app, "float z:", int(z), ".", int(1000*(z-float(int(z)))));
+}
+
+thread_local int x = 1024;
+thread_local int y = 2048;
+void test_tls()
+{
+  MLOG_INFO(mlog::app, "testing thread local storage");
+  // Accessing tls variables before setup leads to page fault
+  auto *tls = mythos::setupInitialTLS();
+  mythos::ExecutionContext own(mythos::init::EC);
+  mythos::PortalLock pl(portal);
+  TEST(own.setFSGS(pl, (uint64_t) tls, 0));
+  TEST_EQ(x, 1024); // just testing if access through %fs is successful
+  TEST_EQ(y, 2048);
+}
+
+struct HostChannel {
+  void init() { ctrlToHost.init(); ctrlFromHost.init(); }
+  typedef mythos::PCIeRingChannel<128,8> CtrlChannel;
+  CtrlChannel ctrlToHost;
+  CtrlChannel ctrlFromHost;
+};
+
+mythos::PCIeRingProducer<HostChannel::CtrlChannel> app2host;
+mythos::PCIeRingConsumer<HostChannel::CtrlChannel> host2app;
+
+void* body(void*){
+  MLOG_INFO(mlog::app, __func__);
+  return nullptr;
 }
 
 int main()
 {
-  MLOG_ERROR(mlog::app, "application is starting blablub :)", DVARhex(msg_ptr), DVARhex(initstack_top));
-  ThreadGroup<4> threads(mythos::null_cap);
+  char const str[] = "hello world!";
+  char const end[] = "bye, cruel world!";
+  mythos::syscall_debug(str, sizeof(str)-1);
+  MLOG_ERROR(mlog::app, "application is starting :)", DVARhex(msg_ptr), DVARhex(initstack_top));
+  {
+	mythos::PortalLock pl(portal);
+
+	/* init heap */
+	uintptr_t vaddr = 22*1024*1024; // choose address different from invokation buffer
+   auto size = 4*1024*1024; // 2 MB
+   auto align = 2*1024*1024; // 2 MB
+   // allocate a 2MiB frame
+   mythos::Frame f(capAlloc());
+   auto res2 = f.create(pl, kmem, size, align).wait();
+   auto res3 = myAS.mmap(pl, f, vaddr, size, 0x1).wait();
+   mythos::heap.addRange(vaddr, size);
+  }
+   //ThreadGroup<1, Worker> wg(mythos::null_cap);
+
+   //for(int i = 0; i < 50; i++){
+	   //wg.thread[0].pushWsTask(new MsgDagTask(0, "Example Task"));
+	//}
+
+   //wg.start(pl);
+
+
+  //mythos::ExecutionContext ec(capAlloc());
+  //ec.create(pl, kmem, myAS, myCS, mythos::init::SCHEDULERS_START+1, &stack[stacksize], body, nullptr).wait();
+  ThreadGroup<4> tg;
+  tg.start();  
+
+  mythos::syscall_debug(end, sizeof(end)-1);
+
   return 0;
 }
 

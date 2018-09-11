@@ -1,6 +1,5 @@
 #include "Task.hh"
-#include "Worker.hh"
-#include <iostream>
+//#include "Worker.hh"
 
 using namespace Prothos;
 
@@ -20,7 +19,7 @@ TaskState Prothos::Task::getState(){
 void Prothos::WorkstealingTask::setState(TaskState state){
 	this->state = state;
 	if(state == Ready){
-		Prothos::GlobalWorkerMap::getMap()->getLocalWorker()->pushWsTask(this);
+		//Prothos::GlobalWorkerMap::getMap()->getLocalWorker()->pushWsTask(this);
 	}
 }
 

@@ -1,8 +1,5 @@
 #pragma once
-#include <list>
-#include <vector>
-#include <string>
-#include <iostream>
+#include "app/mlog.hh"
 
 namespace Prothos{
 
@@ -33,7 +30,7 @@ class WorkstealingTask : public Task{
 
 class MsgTask : public WorkstealingTask{
 	public:
-		MsgTask(std::string str)
+		MsgTask(const char *str)
 			: WorkstealingTask()
 			, str(str)
 		{
@@ -41,11 +38,11 @@ class MsgTask : public WorkstealingTask{
 		}
 
 		void execute() override{
-			std::cerr << str << std::endl;
+			MLOG_INFO(mlog::app, str);
 		}
 
 	private:
-		std::string str;
+		const char *str;
 };
 
 } //Prothos
