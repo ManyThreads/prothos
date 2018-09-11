@@ -4,6 +4,7 @@
 #include "Task.hh"
 #include "Thread.hh"
 //#include "WorkerMap.hh"
+#include "app/mlog.hh"
 
 //#include <unistd.h>
 #include <vector>
@@ -21,8 +22,9 @@ class Worker : public Thread{
 			, running(true)
 		{}
 
-		void body(){
-			while(running){
+		void run(){
+			MLOG_INFO(mlog::app, __func__);
+			//while(running){
 				Task *t;
 				// execute all tasks on work-stealing queue
 				//while((t = wsQueue.pop_bottom())){
@@ -52,7 +54,7 @@ class Worker : public Thread{
 				//}else{
 					//usleep(100);
 				//}
-			}
+			//}
 		}
 
 		// spawn local task

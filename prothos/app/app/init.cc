@@ -43,7 +43,7 @@
 
 #include "runtime/Task.hh"
 #include "runtime/DAG.hh"
-//#include "runtime/Worker.hh"
+#include "runtime/Worker.hh"
 #include "runtime/Thread.hh"
 
 #include <vector>
@@ -190,7 +190,7 @@ int main()
    mythos::heap.addRange(vaddr, size);
   }
 
-  ThreadGroup<4> tg;
+  ThreadGroup<4, Worker> tg;
   tg.start();  
 
   mythos::syscall_debug(end, sizeof(end)-1);

@@ -15,12 +15,6 @@ extern mythos::PageMap myAS;
 extern mythos::CapMap myCS;
 extern mythos::SimpleCapAllocDel capAlloc;
 
-void* myBody(void*)
-{
-  MLOG_INFO(mlog::app, "hello body");
-  return nullptr;
-}
-
 class Thread
 {
 public:
@@ -37,22 +31,25 @@ public:
   mythos::Portal p;
   uint8_t stack[STACK_SIZE];
 
+  virtual void run() = 0;
+  static void* startup(void* ctx) { static_cast<Thread*>(ctx)->run(); return nullptr; }
+
   void start(size_t rank, mythos::Frame &f, uintptr_t vaddr)
   {
     this->rank = rank;
     mythos::PortalLock pl(portal);
     MLOG_INFO(mlog::app, __func__);
 	/* create execution context */
-    ec.create(pl, kmem, myAS, myCS, mythos::init::SCHEDULERS_START+rank, &stack[STACK_SIZE], myBody, nullptr).wait();
+    ec.create(pl, kmem, myAS, myCS, mythos::init::SCHEDULERS_START+rank, &stack[STACK_SIZE], startup, this).wait();
 
 	/* create portal */
-    p.setbuf(reinterpret_cast<mythos::InvocationBuf*>(vaddr + rank * sizeof(mythos::InvocationBuf)));
-    p.create(pl, kmem).wait();
-    p.bind(pl, f, rank * sizeof(mythos::InvocationBuf),ec.cap()).wait();
+    //p.setbuf(reinterpret_cast<mythos::InvocationBuf*>(vaddr + rank * sizeof(mythos::InvocationBuf)));
+    //p.create(pl, kmem).wait();
+    //p.bind(pl, f, rank * sizeof(mythos::InvocationBuf),ec.cap()).wait();
   }
 };
 
-template<size_t SIZE>
+template<size_t SIZE, class T>
 class ThreadGroup
 {
 public:
@@ -60,11 +57,16 @@ public:
 
   ThreadGroup() {};
 
+  static_assert(
+    std::is_base_of<Thread, T>::value,
+    "T must be a descendant of Thread"
+  );
+
   void start()
   {
 	/* allocate frame used as buffer for the portal of every thread */
     mythos::Frame f(capAlloc());
-    uintptr_t vaddr = 26*1024*1024;
+    uintptr_t vaddr = 26 * 1024 * 1024;
     {
       mythos::PortalLock pl(portal);
       // todo: round up size
@@ -77,6 +79,6 @@ public:
     }
   }
 
-  Thread thread[num_threads];
+  T thread[num_threads];
 };
 
