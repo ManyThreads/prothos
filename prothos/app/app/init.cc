@@ -189,17 +189,7 @@ int main()
    auto res3 = myAS.mmap(pl, f, vaddr, size, 0x1).wait();
    mythos::heap.addRange(vaddr, size);
   }
-   //ThreadGroup<1, Worker> wg(mythos::null_cap);
 
-   //for(int i = 0; i < 50; i++){
-	   //wg.thread[0].pushWsTask(new MsgDagTask(0, "Example Task"));
-	//}
-
-   //wg.start(pl);
-
-
-  //mythos::ExecutionContext ec(capAlloc());
-  //ec.create(pl, kmem, myAS, myCS, mythos::init::SCHEDULERS_START+1, &stack[stacksize], body, nullptr).wait();
   ThreadGroup<4> tg;
   tg.start();  
 
