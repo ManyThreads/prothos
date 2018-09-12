@@ -7,7 +7,7 @@
 //#include "atomic.h"
 #include "shim.hh"
 #include <atomic>
-using namespace std;
+//using namespace std;
 
 namespace hlms{
 
@@ -68,10 +68,10 @@ namespace hlms{
             return storage;
           }
 
-          void operator delete(void* ptr)
-          {
-            free(ptr);
-          }
+          //void operator delete(void* ptr)
+          //{
+            //free(ptr);
+          //}
 
           protected:
             std::array<atomic<pointer_type>, array_size> data;

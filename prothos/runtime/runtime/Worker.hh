@@ -1,6 +1,6 @@
 #pragma once
 //#include "FifoQueue.hh"
-//#include "utils/hlmsDeque.hh"
+#include "utils/hlmsDeque.hh"
 #include "Task.hh"
 #include "Thread.hh"
 //#include "WorkerMap.hh"
@@ -27,10 +27,10 @@ class Worker : public Thread{
 			//while(running){
 				Task *t;
 				// execute all tasks on work-stealing queue
-				//while((t = wsQueue.pop_bottom())){
-				while(wsQueue.size() > 0){
-					t = wsQueue.back();
-					wsQueue.pop_back();
+				while((t = wsQueue.pop_bottom())){
+				//while(wsQueue.size() > 0){
+					//t = wsQueue.back();
+					//wsQueue.pop_back();
 					isIdle = false;
 					t->executeTask();
 				}
@@ -59,27 +59,27 @@ class Worker : public Thread{
 
 		// spawn local task
 		void pushWsTask(Task *t){
-			//wsQueue.push_bottom(t);
-			wsQueue.push_back(t);
+			wsQueue.push_bottom(t);
+			//wsQueue.push_back(t);
 		}
 
 		// push task from external worker/thread (low priority)
 		void pushTask(Task *t){
-			//lpQueue.push(t);	
-			wsQueue.push_back(t);
+			lpQueue.push(t);	
+			//wsQueue.push_back(t);
 		}
 
 	
 		Task *tryStealTask(){
-			//auto t = wsQueue.pop_top();
-			auto t = wsQueue.back();
+			auto t = wsQueue.pop_top();
+			//auto t = wsQueue.back();
 			wsQueue.pop_back();
-			//return t.second;
-			return t;
+			return t.second;
+			//return t;
 		}
 	private:
-		std::vector<Task*> wsQueue;
-		//hlms::deque<Task> wsQueue; // Work-Stealing Queue	
+		//std::vector<Task*> wsQueue;
+		hlms::deque<Task> wsQueue; // Work-Stealing Queue	
 		//FifoQueue<Task*> lpQueue; // Low priority Queue
 
 		bool isIdle;

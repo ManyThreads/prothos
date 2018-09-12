@@ -15,8 +15,29 @@ extern mythos::PageMap myAS;
 extern mythos::CapMap myCS;
 extern mythos::SimpleCapAllocDel capAlloc;
 
-class Thread
-{
+//template<class D>
+//class TcbBase {
+//public:
+  //typedef D tcb_t;
+//private:
+  //tcb_t* _this;
+//public:
+  //TcbBase() : _this(static_cast<tcb_t*>(this)) {};
+
+  //uintptr_t gs()
+  //{
+    //return uintptr_t(&_this);
+  //}
+
+  //static tcb_t& local() {
+      //tcb_t* ptr;
+      //static_assert(sizeof(ptr) == 8, "Expected different pointer size.");
+      //asm("movq %%gs:0,%0" : "=r" (ptr));
+      //return *ptr;
+  //};
+//};
+
+class Thread /* : public TcbBase */{
 public:
 
   Thread()
