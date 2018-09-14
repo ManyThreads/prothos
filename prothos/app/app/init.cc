@@ -36,13 +36,14 @@
 #include "runtime/KernelMemory.hh"
 #include "runtime/SimpleCapAlloc.hh"
 #include "runtime/tls.hh"
-#include "app/mlog.hh"
+#include "runtime/mlog.hh"
 #include <cstdint>
 #include "util/optional.hh"
 #include "runtime/umem.hh"
 
 #include "runtime/Task.hh"
 #include "runtime/DAG.hh"
+//#include "runtime/FlowGraph.hh"
 #include "runtime/Worker.hh"
 #include "runtime/Thread.hh"
 
@@ -143,17 +144,17 @@ void test_float()
 
 thread_local int x = 1024;
 thread_local int y = 2048;
-void test_tls()
-{
-  MLOG_INFO(mlog::app, "testing thread local storage");
-  // Accessing tls variables before setup leads to page fault
-  auto *tls = mythos::setupInitialTLS();
-  mythos::ExecutionContext own(mythos::init::EC);
-  mythos::PortalLock pl(portal);
-  TEST(own.setFSGS(pl, (uint64_t) tls, 0));
-  TEST_EQ(x, 1024); // just testing if access through %fs is successful
-  TEST_EQ(y, 2048);
-}
+//void test_tls()
+//{
+  //MLOG_INFO(mlog::app, "testing thread local storage");
+  //// Accessing tls variables before setup leads to page fault
+  //auto *tls = mythos::setupInitialTLS();
+  //mythos::ExecutionContext own(mythos::init::EC);
+  //mythos::PortalLock pl(portal);
+  //TEST(own.setFSGS(pl, (uint64_t) tls, 0));
+  //TEST_EQ(x, 1024); // just testing if access through %fs is successful
+  //TEST_EQ(y, 2048);
+//}
 
 struct HostChannel {
   void init() { ctrlToHost.init(); ctrlFromHost.init(); }
@@ -180,8 +181,8 @@ int main()
 	mythos::PortalLock pl(portal);
 
 	/* init heap */
-	uintptr_t vaddr = 22*1024*1024; // choose address different from invokation buffer
-   auto size = 4*1024*1024; // 2 MB
+	uintptr_t vaddr = 28*1024*1024; // choose address different from invokation buffer
+   auto size = 16*1024*1024; // 512 MB
    auto align = 2*1024*1024; // 2 MB
    // allocate a 2MiB frame
    mythos::Frame f(capAlloc());
@@ -190,11 +191,42 @@ int main()
    mythos::heap.addRange(vaddr, size);
   }
 
-  ThreadGroup<4, Worker> tg;
+  //UserTask fgt( [](){
+	  //FlowGraph::Graph g;
+		//int num = 0;
+		//FlowGraph::SourceNode numGen(g, [&](FlowGraph::GenericMsg &m){
+				//m.ptr = new int(num);
+				//if(num < 100){
+					//return true;
+				//}
+				//return false;
+		//});
+
+		//FlowGraph::FunctionNode primeCheck(g, [](FlowGraph::GenericMsg m){
+			//int num = *static_cast<int*>(m.ptr);
+			//for(int i = 2; i < num; i++){
+				//if(num % i == 0) return m;
+			//}		
+			//MLOG_INFO(mlog::app, "Found prime number: ", num);
+			//return m;
+		//});
+
+	  //FlowGraph::makeEdge(numGen, primeCheck);
+	  //numGen.activate();
+  //});
+
+  UserTask t0([](){
+	MLOG_INFO(mlog::app, "UserTask t0 start");
+	(new MsgDagTask(0,"Hello"))->addSucc(new MsgDagTask(1," World")); 
+  });
+  ThreadGroup<1, Worker> tg;
   tg.start();  
 
-  mythos::syscall_debug(end, sizeof(end)-1);
+  tg.threads[0].pushTask(&t0);
+  //tg.threads[0].pushTask(&fgt);
 
+  mythos::syscall_debug(end, sizeof(end)-1);
+  while(1);
   return 0;
 }
 
