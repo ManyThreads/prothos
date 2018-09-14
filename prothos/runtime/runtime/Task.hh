@@ -1,5 +1,5 @@
 #pragma once
-#include "app/mlog.hh"
+#include "runtime/mlog.hh"
 
 namespace Prothos{
 
@@ -28,11 +28,44 @@ class WorkstealingTask : public Task{
 		void setState(TaskState state);
 };
 
+class TaskBody{
+	public:
+		virtual void run() = 0;
+};
+
+template<typename Body>
+class TaskBodyImpl : public TaskBody {
+	public:
+		TaskBodyImpl(Body &body)
+			: body(body)
+		{}
+		
+		void run() override {
+			body();
+		}
+
+	private:
+		Body body;	
+};
+
+class UserTask : public Task {
+	public:
+		template<typename Body>
+		UserTask(Body body)
+			: myBody(new TaskBodyImpl<Body>(body))
+		{}
+
+		void execute() override {
+			myBody->run();
+		}
+	private:
+		TaskBody* myBody;
+};
+
 class MsgTask : public WorkstealingTask{
 	public:
 		MsgTask(const char *str)
-			: WorkstealingTask()
-			, str(str)
+			: str(str)
 		{
 			setState(Ready);
 		}

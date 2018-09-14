@@ -74,7 +74,7 @@ namespace hlms{
           //}
 
           protected:
-            std::array<atomic<pointer_type>, array_size> data;
+            std::array<std::atomic<pointer_type>, array_size> data;
         };
 
         //static_assert(sizeof(deque_node) == deque_node::node_size, "Invalid node size!");
@@ -106,8 +106,8 @@ namespace hlms{
 
         };
 
-        atomic<size_t> top_code;
-        atomic<size_t> bottom_code;
+		std::atomic<size_t> top_code;
+		std::atomic<size_t> bottom_code;
 
         inline bool indicateEmpty(const cas_struct& top);
 

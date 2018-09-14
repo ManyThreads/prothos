@@ -2,12 +2,14 @@
 
 #include "mythos/init.hh"
 #include "runtime/ExecutionContext.hh"
+#include "runtime/SimpleCapAlloc.hh"
 #include "runtime/Portal.hh"
-#include "app/mlog.hh"
+#include "runtime/mlog.hh"
 #include "runtime/KernelMemory.hh"
 #include "runtime/PageMap.hh"
 #include "runtime/CapMap.hh"
 #include "mythos/invocation.hh"
+#include "runtime/tls.hh"
 
 extern mythos::Portal portal;
 extern mythos::KernelMemory kmem;
@@ -15,29 +17,21 @@ extern mythos::PageMap myAS;
 extern mythos::CapMap myCS;
 extern mythos::SimpleCapAllocDel capAlloc;
 
-//template<class D>
-//class TcbBase {
-//public:
-  //typedef D tcb_t;
-//private:
-  //tcb_t* _this;
-//public:
-  //TcbBase() : _this(static_cast<tcb_t*>(this)) {};
+namespace Prothos{
+	class Thread;
+}
 
-  //uintptr_t gs()
-  //{
-    //return uintptr_t(&_this);
-  //}
+extern thread_local Prothos::Thread* localThread;
 
-  //static tcb_t& local() {
-      //tcb_t* ptr;
-      //static_assert(sizeof(ptr) == 8, "Expected different pointer size.");
-      //asm("movq %%gs:0,%0" : "=r" (ptr));
-      //return *ptr;
-  //};
-//};
+namespace Prothos{
 
-class Thread /* : public TcbBase */{
+
+
+static Thread* getLocalThread(){
+	return localThread;
+}
+
+class Thread {
 public:
 
   Thread()
@@ -53,7 +47,11 @@ public:
   uint8_t stack[STACK_SIZE];
 
   virtual void run() = 0;
-  static void* startup(void* ctx) { static_cast<Thread*>(ctx)->run(); return nullptr; }
+  static void* startup(void* ctx) { 
+	  localThread = static_cast<Thread*>(ctx);
+	  static_cast<Thread*>(ctx)->run(); 
+	  return nullptr; 
+  }
 
   void start(size_t rank, mythos::Frame &f, uintptr_t vaddr)
   {
@@ -61,12 +59,17 @@ public:
     mythos::PortalLock pl(portal);
     MLOG_INFO(mlog::app, __func__);
 	/* create execution context */
-    ec.create(pl, kmem, myAS, myCS, mythos::init::SCHEDULERS_START+rank, &stack[STACK_SIZE], startup, this).wait();
+    auto tls = mythos::setupNewTLS();
+    ec.create(kmem).as(myAS).cs(myCS).sched(mythos::init::SCHEDULERS_START+rank+1)
+    .prepareStack(&stack[STACK_SIZE]).startFun(&startup, this)
+    .suspended(false).fs(tls)
+    .invokeVia(pl).wait();
 
 	/* create portal */
-    //p.setbuf(reinterpret_cast<mythos::InvocationBuf*>(vaddr + rank * sizeof(mythos::InvocationBuf)));
-    //p.create(pl, kmem).wait();
-    //p.bind(pl, f, rank * sizeof(mythos::InvocationBuf),ec.cap()).wait();
+	p.setbuf(reinterpret_cast<mythos::InvocationBuf*>(vaddr + rank * sizeof(mythos::InvocationBuf)));
+	p.create(pl, kmem).wait();
+	p.bind(pl, f, rank * sizeof(mythos::InvocationBuf),ec.cap()).wait();
+    MLOG_INFO(mlog::app, "this ", DVARhex(this));
   }
 };
 
@@ -96,10 +99,12 @@ public:
     }
     for (size_t i = 0; i < num_threads; ++i)
     {
-      thread[i].start(i, f, vaddr);
+      threads[i].start(i, f, vaddr);
     }
   }
 
-  T thread[num_threads];
+  T threads[num_threads];
 };
+
+} //Prothos
 

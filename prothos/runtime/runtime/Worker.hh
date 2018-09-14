@@ -1,10 +1,10 @@
 #pragma once
-//#include "FifoQueue.hh"
+#include "utils/FifoQueue.hh"
 #include "utils/hlmsDeque.hh"
-#include "Task.hh"
-#include "Thread.hh"
+#include "runtime/Task.hh"
+#include "runtime/Thread.hh"
 //#include "WorkerMap.hh"
-#include "app/mlog.hh"
+#include "runtime/mlog.hh"
 
 //#include <unistd.h>
 #include <vector>
@@ -22,29 +22,31 @@ class Worker : public Thread{
 			, running(true)
 		{}
 
+		static Worker* getLocalWorker(){
+			return static_cast<Worker*>(getLocalThread());
+		}
+
 		void run(){
 			MLOG_INFO(mlog::app, __func__);
-			//while(running){
+    MLOG_INFO(mlog::app, "worker ", DVARhex(getLocalThread()));
+			while(running){
+			//MLOG_INFO(mlog::app, "worker cycle");
 				Task *t;
 				// execute all tasks on work-stealing queue
 				while((t = wsQueue.pop_bottom())){
-				//while(wsQueue.size() > 0){
-					//t = wsQueue.back();
-					//wsQueue.pop_back();
+					MLOG_INFO(mlog::app, "got task");
 					isIdle = false;
 					t->executeTask();
 				}
-				return;
-				//// execute a task from low priotiy queue
-				//if(lpQueue.size() > 0){
-					//t = lpQueue.pop();
-					//t->executeTask();
-					//if(!running){
-						////std::cerr << "Tschau!" << std::endl;
-						//return;
-					//}
-					//continue;
-				//}
+				// execute a task from low priotiy queue
+				if((t = lpQueue.pop())){
+					MLOG_INFO(mlog::app, "got LP task");
+					t->executeTask();
+					if(!running){
+						return;
+					}
+					continue;
+				}
 
 				//Worker *victim = GlobalWorkerMap::getMap()->getRandomWorker();
 				//t = victim->tryStealTask();
@@ -54,33 +56,30 @@ class Worker : public Thread{
 				//}else{
 					//usleep(100);
 				//}
-			//}
+			}
+			MLOG_INFO(mlog::app, "worker out! *drops mic*");
 		}
 
 		// spawn local task
 		void pushWsTask(Task *t){
+			MLOG_INFO(mlog::app, __func__);
 			wsQueue.push_bottom(t);
-			//wsQueue.push_back(t);
 		}
 
 		// push task from external worker/thread (low priority)
 		void pushTask(Task *t){
-			lpQueue.push(t);	
-			//wsQueue.push_back(t);
+			MLOG_INFO(mlog::app, __func__);
+			wsQueue.push_bottom(t);
 		}
 
 	
 		Task *tryStealTask(){
 			auto t = wsQueue.pop_top();
-			//auto t = wsQueue.back();
-			wsQueue.pop_back();
 			return t.second;
-			//return t;
 		}
 	private:
-		//std::vector<Task*> wsQueue;
 		hlms::deque<Task> wsQueue; // Work-Stealing Queue	
-		//FifoQueue<Task*> lpQueue; // Low priority Queue
+		FifoQueue<Task> lpQueue; // Low priority Queue
 
 		bool isIdle;
 		bool running;

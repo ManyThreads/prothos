@@ -1,45 +1,32 @@
 #pragma once
 
 #include <queue>
-//#include <thread>
-//#include <mutex>
-//#include <condition_variable>
+#include "runtime/Mutex.hh"
 
 template <typename T>
 class FifoQueue
 {
  public:
 
-  T pop() {
-    //std::unique_lock<std::mutex> mlock(mutex);
-    while (queue.empty()) {
-      //cond.wait(mlock);
-    }
+  T* pop() {
+	mythos::Mutex::Lock l(mutex);
+	if(queue.empty()) return nullptr;
     auto item = queue.front();
     queue.pop();
     return item;
   }
 
-  void push(const T& item) {
-    //std::unique_lock<std::mutex> mlock(mutex);
+  void push(const T* item) {
+	mythos::Mutex::Lock l(mutex);
     queue.push(item);
-    //mlock.unlock();
-    //cond.notify_one();
-  }
-
-  void push(T&& item) {
-    //std::unique_lock<std::mutex> mlock(mutex);
-    queue.push(std::move(item));
-    //mlock.unlock();
-    //cond.notify_one();
   }
 
   int size(){
+	mythos::Mutex::Lock l(mutex);
     return queue.size();
   }
 
  private:
-  std::queue<T> queue;
-  //std::mutex mutex;
-  //std::condition_variable cond;
+  std::queue<T*> queue;
+  mythos::Mutex mutex;
 };

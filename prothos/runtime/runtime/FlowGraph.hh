@@ -1,15 +1,14 @@
 #pragma once
 
-#include "DAG.hh"
-#include "Worker.hh"
-#include "FifoQueue.hh"
+#include "runtime/DAG.hh"
+#include "runtime/Worker.hh"
+#include "utils/FifoQueue.hh"
+#include "runtime/Mutex.hh"
+#include "util/assert.hh"
 
-#include <iostream>
 #include <vector>
 #include <algorithm>
-#include <mutex>
 #include <functional>
-#include <assert.h>
 
 namespace Prothos{
 namespace FlowGraph{
@@ -56,7 +55,6 @@ class FlowGraphTask : public DagTask{
 			: DagTask(deps)
 			, expanded(false)
 		{
-			//std::cout << __func__ << std::endl;
 		}
 
 		virtual void expand(int depth) = 0;
@@ -95,7 +93,6 @@ class Promise{
 			, myTask(myTask)
 	{}
 		void write(T val){
-			//std::lock_guard<std::mutex> lg(m);
 			this->val = val;
 		}
 
@@ -106,7 +103,6 @@ class Promise{
 		void registerFuture(Future<T> &f){
 			myTask.addSucc(&f.getTask());
 		}
-#include <mutex>
 
 		T& getVal(){
 			return val;
@@ -136,33 +132,33 @@ class Future{
 			: prom(promise)
 			, myTask(myTask)
 		{
-			assert(prom);
-			assert(myTask);
+			ASSERT(prom);
+			ASSERT(myTask);
 			prom->reserve();
 		}
 
 		void setProm(Promise<T> *promise){
-			assert(promise);
+			ASSERT(promise);
 			prom = promise;
 		}
 
 		void setTask(FlowGraphTask *task){
-			assert(task);
+			ASSERT(task);
 			myTask = task;
 		}
 
 		T& getVal(){
-			assert(prom);
+			ASSERT(prom);
 			return prom->getVal();
 		}
 
 		FlowGraphTask& getTask(){
-			assert(myTask);
+			ASSERT(myTask);
 			return *myTask;
 		}
 
 		void release(){
-			assert(prom);
+			ASSERT(prom);
 			prom->release();
 			prom = nullptr;
 		}
@@ -259,7 +255,6 @@ class Receiver{
 	public:
 		virtual FlowGraphTask *pushPromise(Promise<Input> &p) = 0;
 		FlowGraphTask* pushValue(const Input &i){
-			//std::cout << __func__ << std::endl;
 			DummyInputTask<Input> *t = new DummyInputTask<Input>(i);
 			return pushPromise(t->prom);
 		}
@@ -277,8 +272,7 @@ class Sender{
 
 		void removeSuccessor(Receiver<Output> &r) {
 			mySuccessors.removeSuccessor(&r);
-			// erase-remove-idiom
-			mySuccessors.erase(std::remove(mySuccessors.begin(), mySuccessors.end(), r), mySuccessors.end());
+			mySuccessors.erase(find(mySuccessors.begin(), mySuccessors.end(), r), mySuccessors.end());
 		}
 
 	private:
@@ -302,7 +296,6 @@ class FunctionInput : public Receiver<Input>{
 		}	
 
 		FlowGraphTask *pushPromise(Promise<Input> &p) override {
-			//std::cout << __func__ << std::endl;
 			return new ApplyBodyTask<FunctionInput<Input, Output>, Input, Output>(*this, p);
 		}
 
@@ -359,7 +352,7 @@ class QueueingInputPort : public Receiver<Input>{
 		FlowGraphTask *pushPromise(Promise<Input> &p) override {
 			p.reserve();
 			prom.push(&p);
-			assert(handler);
+			ASSERT(handler);
 			handler->handle();
 			return nullptr;
 		}
@@ -432,10 +425,8 @@ template <typename Input, typename Output, size_t NumPorts>
 class JoinInput : public Handler{
 	public:
 		JoinInput()
-			: mutex(new std::mutex)
 		{
 			for(auto &i : inPorts){
-				//i = QueueingInputPort<Input>();
 				i.setHandler(this);
 			}	
 		};
@@ -451,7 +442,7 @@ class JoinInput : public Handler{
 		virtual std::vector<Receiver<GenericMsg>*> successors() = 0;
 	private:
 		void tryJoinTask() {
-			std::lock_guard<std::mutex> mlock(*mutex);
+			mythos::Mutex::Lock guard(mutex);
 			for(auto &i : inPorts){
 				if(!i.hasPromise())
 					return;
@@ -459,14 +450,13 @@ class JoinInput : public Handler{
 			std::array<Promise<Input>*, NumPorts> *pred = new std::array<Promise<Input>*, NumPorts>;
 			for(size_t i = 0; i < NumPorts; i++){
 				(*pred)[i] = inPorts[i].getPromise();	
-				assert((*pred)[i] != nullptr);
+				ASSERT((*pred)[i] != nullptr);
 			}
 			new JoinTask<JoinInput<Input, Output, NumPorts>, Input, Output, NumPorts>(*this, pred);
 		}
 
 		std::array<QueueingInputPort<Input>, NumPorts> inPorts;
-		std::mutex *mutex;
-		
+		mythos::Mutex mutex;
 };
 
 template <size_t NumPorts>
