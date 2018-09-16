@@ -102,7 +102,7 @@ public:
       threads[i].start(i, f, vaddr);
     }
   }
-
+protected:
   T threads[num_threads];
 };
 

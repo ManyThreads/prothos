@@ -1,5 +1,7 @@
 #pragma once
 #include "runtime/mlog.hh"
+#include "utils/FifoQueue.hh"
+#include <atomic>
 
 namespace Prothos{
 
@@ -9,7 +11,7 @@ enum TaskState{
 	Executed
 };
 
-class Task{
+class Task { 
 public:
 	Task();
 	virtual ~Task(){};
@@ -20,7 +22,10 @@ private:
 	virtual void execute() = 0;
 	TaskState state;
 
+	std::atomic<Task*> next;
+
 	friend class WorkstealingTask;
+	friend class FifoQueue<Task>;
 };
 
 class WorkstealingTask : public Task{

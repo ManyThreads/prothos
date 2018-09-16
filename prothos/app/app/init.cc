@@ -79,82 +79,6 @@ void* thread_main(void* ctx)
   return 0;
 }
 
-void test_Example()
-{
-  char const obj[] = "hello object!";
-  MLOG_ERROR(mlog::app, "test_Example begin");
-  mythos::PortalLock pl(portal); // future access will fail if the portal is in use already
-  mythos::Example example(capAlloc());
-  TEST(example.create(pl, kmem).wait()); // use default mythos::init::EXAMPLE_FACTORY
-  // wait() waits until the result is ready and returns a copy of the data and state.
-  // hence, the contents of res1 are valid even after the next use of the portal
-  TEST(example.printMessage(pl, obj, sizeof(obj)-1).wait());
-  TEST(capAlloc.free(example,pl));
-  // pl.release(); // implicit by PortalLock's destructor
-  MLOG_ERROR(mlog::app, "test_Example end");
-}
-
-void test_Portal()
-{
-  MLOG_ERROR(mlog::app, "test_Portal begin");
-  mythos::PortalLock pl(portal); // future access will fail if the portal is in use already
-  MLOG_INFO(mlog::app, "test_Portal: allocate portal");
-  uintptr_t vaddr = 22*1024*1024; // choose address different from invokation buffer
-  // allocate a portal
-  mythos::Portal p2(capAlloc(), (void*)vaddr);
-  auto res1 = p2.create(pl, kmem).wait();
-  TEST(res1);
-  // allocate a 2MiB frame
-  MLOG_INFO(mlog::app, "test_Portal: allocate frame");
-  mythos::Frame f(capAlloc());
-  auto res2 = f.create(pl, kmem, 2*1024*1024, 2*1024*1024).wait();
-  MLOG_INFO(mlog::app, "alloc frame", DVAR(res2.state()));
-  TEST(res2);
-  // map the frame into our address space
-  MLOG_INFO(mlog::app, "test_Portal: map frame");
-  auto res3 = myAS.mmap(pl, f, vaddr, 2*1024*1024, 0x1).wait();
-  MLOG_INFO(mlog::app, "mmap frame", DVAR(res3.state()),
-            DVARhex(res3->vaddr), DVARhex(res3->size), DVAR(res3->level));
-  TEST(res3);
-  // bind the portal in order to receive responses
-  MLOG_INFO(mlog::app, "test_Portal: configure portal");
-  auto res4 = p2.bind(pl, f, 0, mythos::init::EC).wait();
-  TEST(res4);
-  // and delete everything again
-  MLOG_INFO(mlog::app, "test_Portal: delete frame");
-  TEST(capAlloc.free(f, pl));
-  MLOG_INFO(mlog::app, "test_Portal: delete portal");
-  TEST(capAlloc.free(p2, pl));
-  MLOG_ERROR(mlog::app, "test_Portal end");
-}
-
-void test_float()
-{
-  MLOG_INFO(mlog::app, "testing user-mode floating point");
-
-  volatile float x = 5.5;
-  volatile float y = 0.5;
-
-  float z = x*y;
-
-  TEST_EQ(int(z), 2);
-  TEST_EQ(int(1000*(z-float(int(z)))), 750);
-  MLOG_INFO(mlog::app, "float z:", int(z), ".", int(1000*(z-float(int(z)))));
-}
-
-thread_local int x = 1024;
-thread_local int y = 2048;
-//void test_tls()
-//{
-  //MLOG_INFO(mlog::app, "testing thread local storage");
-  //// Accessing tls variables before setup leads to page fault
-  //auto *tls = mythos::setupInitialTLS();
-  //mythos::ExecutionContext own(mythos::init::EC);
-  //mythos::PortalLock pl(portal);
-  //TEST(own.setFSGS(pl, (uint64_t) tls, 0));
-  //TEST_EQ(x, 1024); // just testing if access through %fs is successful
-  //TEST_EQ(y, 2048);
-//}
 
 struct HostChannel {
   void init() { ctrlToHost.init(); ctrlFromHost.init(); }
@@ -215,18 +139,22 @@ int main()
 	  //numGen.activate();
   //});
 
-  UserTask t0([](){
+  UserTask* t0 = new UserTask([](){
 	MLOG_INFO(mlog::app, "UserTask t0 start");
-	(new MsgDagTask(0,"Hello"))->addSucc(new MsgDagTask(1," World")); 
+	for(int i = 0; i < 5; i++){
+		(new MsgDagTask(0,"Hello"))->addSucc(new MsgDagTask(1," World")); 
+		//new MsgTask("Hello World :D");
+	}
   });
-  ThreadGroup<1, Worker> tg;
-  tg.start();  
+  WorkerGroup* wg = new FixedWorkerGroup<3>;
+  wg->start();  
 
-  tg.threads[0].pushTask(&t0);
+  wg->pushTask(t0);
+  wg->pushTask(new TerminationMarkerTask());
   //tg.threads[0].pushTask(&fgt);
 
   mythos::syscall_debug(end, sizeof(end)-1);
-  while(1);
+  //while(1);
   return 0;
 }
 
