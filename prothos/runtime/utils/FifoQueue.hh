@@ -15,7 +15,7 @@ class FifoQueue
 		{}
 
 		void push(T* e){
-			MLOG_INFO(mlog::app, __func__, DVAR(e), DVAR(this));
+			//MLOG_INFO(mlog::app, __func__, DVAR(e), DVAR(this));
 			ASSERT(e);
 			auto h =head.load();
 			do{
@@ -38,12 +38,16 @@ class FifoQueue
 			}
 				
 			if(tail != nullptr){
-				MLOG_INFO(mlog::app, __func__, DVAR(tail), DVAR(this));
+				//MLOG_INFO(mlog::app, __func__, DVAR(tail), DVAR(this));
 				ret = tail;
 				tail = tail->next;
 			}
 			return ret;
 			
+		}
+
+		bool empty(){
+			return (head.load() == nullptr) && (tail == nullptr);
 		}
 
 	private:

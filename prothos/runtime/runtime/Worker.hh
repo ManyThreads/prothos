@@ -51,6 +51,7 @@ class FixedWorkerGroup : public WorkerGroup, public ThreadGroup<SIZE, Worker> {
 	  Worker* getRandomWorker() override {
 		static size_t w = 0;
 		w = (w+1)%SIZE;
+		//MLOG_INFO(mlog::app, __func__, DVAR(w));
 		return &ThreadGroup<SIZE, Worker>::threads[w];
 	  };
 
@@ -94,20 +95,20 @@ class Worker : public GroupWorker, public Thread{
     MLOG_INFO(mlog::app, "worker ", DVARhex(getLocalThread()));
 			int cycle = 0;
 			while(running){
-				cycle = (cycle+1)%100;
-				if(cycle == 0){
-					MLOG_INFO(mlog::app, "worker cycle");
-				}
+				//cycle = (cycle+1)%100;
+				//if(cycle == 0){
+					////MLOG_INFO(mlog::app, "worker cycle");
+				//}
 				Task *t;
 				// execute all tasks on work-stealing queue
 				while((t = wsQueue.pop_bottom())){
-					MLOG_INFO(mlog::app, "got task");
+					//MLOG_INFO(mlog::app, "got task");
 					isIdle = false;
 					t->executeTask();
 				}
 				// execute a task from low priotiy queue
 				if((t = lpQueue.pop())){
-					MLOG_INFO(mlog::app, "got LP task");
+					//MLOG_INFO(mlog::app, "got LP task");
 					t->executeTask();
 					if(!running){
 						break;
@@ -118,7 +119,7 @@ class Worker : public GroupWorker, public Thread{
 				Worker *victim = getGroup()->getRandomWorker();
 				t = victim->tryStealTask();
 				if(t){
-					MLOG_INFO(mlog::app, "Task stolen");
+					//MLOG_INFO(mlog::app, "Task stolen");
 					isIdle = false;
 					t->executeTask();
 				}else{
@@ -130,14 +131,14 @@ class Worker : public GroupWorker, public Thread{
 
 		// spawn local task
 		void pushWsTask(Task *t){
-			MLOG_INFO(mlog::app, __func__, DVAR(t), DVAR(this));
+			//MLOG_INFO(mlog::app, __func__, DVAR(t), DVAR(this));
 			wsQueue.push_bottom(t);
-			MLOG_INFO(mlog::app, "pushed");
+			//MLOG_INFO(mlog::app, "pushed");
 		}
 
 		// push task from external worker/thread (low priority)
 		void pushTask(Task *t){
-			MLOG_INFO(mlog::app, __func__, DVAR(t), DVAR(this));
+			//MLOG_INFO(mlog::app, __func__, DVAR(t), DVAR(this));
 			lpQueue.push(t);
 		}
 
@@ -168,7 +169,6 @@ class TerminationTask : public Task{
 		}
 
 		void execute() override {
-			MLOG_INFO(mlog::app, __func__);
 			Worker* curr = Worker::getLocalWorker();
 			curr->running = false;
 			Worker* next = Worker::getNextWorker();
@@ -191,13 +191,11 @@ class TerminationMarkerTask : public Task{
 		}
 
 		void execute() override {
-			MLOG_INFO(mlog::app, __func__);
+			//MLOG_INFO(mlog::app, __func__);
 			Worker* curr = Worker::getLocalWorker();
 			if((w == nullptr) || (!curr->isIdle)){
-				MLOG_INFO(mlog::app, "test");
 				curr->isIdle = true;
 				if((w == nullptr) || (cycle > 0)){
-					MLOG_INFO(mlog::app, "test0");
 					w = curr;
 					cycle = 0;
 				}

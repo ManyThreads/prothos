@@ -210,10 +210,11 @@ public:
 
 	void expand(int depth) override{
 		for(auto n : myNode.successors()){
-			FlowGraphTask *t = n->pushPromise(myOutput);
-			if(t != nullptr && depth != 0){
-				t->expand(depth > 0 ? depth - 1 : depth);
-			}
+			ASSERT(n);
+			/*FlowGraphTask *t =*/ n->pushPromise(myOutput);
+			//if(t != nullptr && depth != 0){
+				//t->expand(depth > 0 ? depth - 1 : depth);
+			//}
 		}
 		expanded = true;	
 	}
@@ -250,10 +251,16 @@ class FunctionBodyLeaf : public FunctionBody<Input, Output> {
 		Body myBody;
 };
 
+template<typename Output>
+class Sender;
+
 template<typename Input>
 class Receiver{
 	public:
 		virtual FlowGraphTask *pushPromise(Promise<Input> &p) = 0;
+		virtual void registerPredecessor(Sender<Input>& s){};
+		virtual void removePredecessor(Sender<Input>& s){};
+
 		FlowGraphTask* pushValue(const Input &i){
 			DummyInputTask<Input> *t = new DummyInputTask<Input>(i);
 			return pushPromise(t->prom);
@@ -325,11 +332,13 @@ class FunctionNode : public GraphNode, public FunctionInput<GenericMsg, GenericM
 template<typename T>
 inline void makeEdge(Sender<T> &s, Receiver<T> &r) {
     s.registerSuccessor(r);
+	r.registerPredecessor(s);
 }
 
 template<typename T>
 inline void removeEdge(Sender<T> &s, Receiver<T> &r) {
     s.removeSuccessor(r);
+	r.removePredecessor(s);
 }
 
 class Handler{
@@ -358,11 +367,12 @@ class QueueingInputPort : public Receiver<Input>{
 		}
 		
 		bool hasPromise(){ 
-			return prom.size() > 0; 
+			return !prom.empty(); 
 		}
 
 		Promise<Input> *getPromise(){ 
 			Promise<Input> *ret = prom.pop();
+			ASSERT(ret);
 			return ret; 
 		}
 
@@ -557,6 +567,93 @@ class SourceNode : public GraphNode, public Sender<GenericMsg>{
 
 	template<typename NodeType, typename Output> friend class SourceTask;
 };
+
+//template<typename NodeType, typename Output, size_t NumPorts>
+//class ContinueTask : public FlowGraphTask{
+//public:
+	//ContinueTask(NodeType &n, std::array<Promise<GenericMsg>*, NumPorts> *p)
+		//: FlowGraphTask(NumPorts)
+		//, myNode(n)
+		//, myOutput(*this)
+	//{
+		//for(size_t i = 0; i < NumPorts; i++){
+			//myInput[i].setTask(this);
+			//myInput[i].setProm((*p)[i]);
+			//(*p)[i]->registerFuture(myInput[i]);
+			//(*p)[i]->release();
+		//}
+		//delete p;
+	//}
+
+	//void bodyFunc() override{
+		//myOutput.write(msg);
+	//};
+
+	//void expand(int depth) override{
+		//for(auto n : myNode.successors()){
+			//FlowGraphTask *t = n->pushPromise(myOutput);
+			//if(t != nullptr && depth != 0){
+				//t->expand(depth > 0 ? depth - 1 : depth);
+			//}
+		//}	
+	//}
+
+	//Output *getOutput(){
+		//return &myOutput;
+	//};
+
+//private:
+	//NodeType &myNode;
+	//Promise<Output> myOutput;
+	//std::array<Future<Input>, NumPorts> myInput;
+//};
+//template<typename Output>
+//class ContinueInput : public Receiver<GenericMsg>{
+	//public:
+		//typedef FunctionBody<void, Output> FunctionBodyType;
+
+		//ContinueInput(size_t num)
+			//: myBody(new FunctionBodyLeaf<void, Output, Body>(body))
+		//{}
+
+		//~ContinueInput(){
+			//delete myBody;
+		//}
+
+		//FlowGraphTask *pushPromise(Promise<GenericMsg> &p) override {
+			//return new ApplyBodyTask<FunctionInput<void, Output>, Output>(*this, p);
+		//}
+	//protected:
+		//void registerPredecessor(Sender<Input>& s) override {
+			////inc num
+		//}
+
+		//void removePredecessor(Sender<Input>& s)override {
+			//// dec num
+		//}
+
+	//private:
+		//FunctionBodyType *myBody;
+		
+
+//};
+
+//class ContinueNode : public GraphNode, public ContinueInput, public Sender<GenericMsg>{
+	//public:
+		//template<typename Body>
+		//ContinueNode(Graph &g, Body body, size_t num = 0)
+			//: GraphNode(g)
+			//, ContinueNode(body, num)
+		//{
+		
+		//}
+
+		//std::vector<Receiver<GenericMsg>*> successors(){
+			//return Sender<GenericMsg>::successors();
+		//}
+
+
+//};
 
 } //FlowGraph
 } //Prothos

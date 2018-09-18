@@ -16,7 +16,7 @@
 	  inline void* aligned_alloc(size_t alignment, size_t size)
 	  {
 		void* result;
-		if (mythos::posix_memalign(&result, alignment, size) == 0) {
+		if (posix_memalign(&result, alignment, size) == 0) {
 		  return result;
 		} else {
 		  return nullptr;

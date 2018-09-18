@@ -43,7 +43,7 @@
 
 #include "runtime/Task.hh"
 #include "runtime/DAG.hh"
-//#include "runtime/FlowGraph.hh"
+#include "runtime/FlowGraph.hh"
 #include "runtime/Worker.hh"
 #include "runtime/Thread.hh"
 
@@ -106,7 +106,7 @@ int main()
 
 	/* init heap */
 	uintptr_t vaddr = 28*1024*1024; // choose address different from invokation buffer
-   auto size = 16*1024*1024; // 512 MB
+   auto size = 512*1024*1024; // 512 MB
    auto align = 2*1024*1024; // 2 MB
    // allocate a 2MiB frame
    mythos::Frame f(capAlloc());
@@ -115,29 +115,30 @@ int main()
    mythos::heap.addRange(vaddr, size);
   }
 
-  //UserTask fgt( [](){
-	  //FlowGraph::Graph g;
-		//int num = 0;
-		//FlowGraph::SourceNode numGen(g, [&](FlowGraph::GenericMsg &m){
-				//m.ptr = new int(num);
-				//if(num < 100){
-					//return true;
-				//}
-				//return false;
-		//});
+  Task* fgt = new UserTask( [](){
+	  FlowGraph::Graph g;
+		int num = 0;
+		auto numGen = new FlowGraph::SourceNode(g, [&](FlowGraph::GenericMsg &m){
+				m.ptr = new int(num);
+				if(num < 10000){
+					num++;
+					return true;
+				}
+				return false;
+		});
 
-		//FlowGraph::FunctionNode primeCheck(g, [](FlowGraph::GenericMsg m){
-			//int num = *static_cast<int*>(m.ptr);
-			//for(int i = 2; i < num; i++){
-				//if(num % i == 0) return m;
-			//}		
-			//MLOG_INFO(mlog::app, "Found prime number: ", num);
-			//return m;
-		//});
+		auto primeCheck = new FlowGraph::FunctionNode(g, [](FlowGraph::GenericMsg m){
+			int num = *static_cast<int*>(m.ptr);
+			for(int i = 2; i < num; i++){
+				if(num % i == 0) return m;
+			}		
+			MLOG_INFO(mlog::app, "Found prime number: ", num);
+			return m;
+		});
 
-	  //FlowGraph::makeEdge(numGen, primeCheck);
-	  //numGen.activate();
-  //});
+	  FlowGraph::makeEdge(*numGen, *primeCheck);
+	  numGen->activate();
+  });
 
   UserTask* t0 = new UserTask([](){
 	MLOG_INFO(mlog::app, "UserTask t0 start");
@@ -150,8 +151,8 @@ int main()
   wg->start();  
 
   wg->pushTask(t0);
+  wg->pushTask(fgt);
   wg->pushTask(new TerminationMarkerTask());
-  //tg.threads[0].pushTask(&fgt);
 
   mythos::syscall_debug(end, sizeof(end)-1);
   //while(1);
