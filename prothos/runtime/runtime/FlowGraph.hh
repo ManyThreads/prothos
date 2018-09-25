@@ -9,6 +9,7 @@
 #include <vector>
 #include <algorithm>
 #include <functional>
+#include <tuple>
 
 namespace Prothos{
 namespace FlowGraph{
@@ -114,6 +115,7 @@ class Promise{
 				//delete &myTask;
 		};
 
+		std::atomic<Promise<T>*> next;
 	private:
 		T val;
 		size_t refCount;
@@ -185,11 +187,11 @@ class DummyInputTask : public FlowGraphTask{
 		Promise<T> prom;
 };
 
-// Since AnyDSL does not need typed messages use a generic message type as placeholder
-class GenericMsg{
-	public:
-		void* ptr;
-};
+//// Since AnyDSL does not need typed messages use a generic message type as placeholder
+//class GenericMsg{
+	//public:
+		//void* ptr;
+//};
 
 template<typename NodeType, typename Input, typename Output>
 class ApplyBodyTask : public FlowGraphTask{
@@ -285,7 +287,7 @@ class Sender{
 	private:
 		std::vector<Receiver<Output>* > mySuccessors;
 	
-	friend class SourceNode;
+	template<typename Out> friend class SourceNode;
 };
 
 template<typename Input, typename Output>
@@ -316,16 +318,17 @@ class FunctionInput : public Receiver<Input>{
 	
 };
 
-class FunctionNode : public GraphNode, public FunctionInput<GenericMsg, GenericMsg>, public Sender<GenericMsg>{
+template<typename Input, typename Output>
+class FunctionNode : public GraphNode, public FunctionInput<Input, Output>, public Sender<Output>{
 	public:
 		template<typename Body>
 		FunctionNode(Graph &g, Body body)
 			: GraphNode(g)
-			, FunctionInput<GenericMsg, GenericMsg>(body)
+			, FunctionInput<Input, Output>(body)
 		{}
 		
-		std::vector<Receiver<GenericMsg>*> successors(){
-			return Sender<GenericMsg>::successors();
+		std::vector<Receiver<Output>*> successors() override {
+			return Sender<Output>::successors();
 		}
 };
 
@@ -341,28 +344,20 @@ inline void removeEdge(Sender<T> &s, Receiver<T> &r) {
 	r.removePredecessor(s);
 }
 
-class Handler{
-	public:
-		virtual void handle() = 0;
-};
+template <typename OutTuple>
+class JoinInput;
 
-template <typename Input>
+template <typename Input, class JNode>
 class QueueingInputPort : public Receiver<Input>{
 	public:
-		QueueingInputPort() 
-			: handler(nullptr)
+		QueueingInputPort(JNode &node) 
+			: myNode(node)
 		{
 		}
 
-		void setHandler(Handler *h){
-			handler = h;
-		}
-
 		FlowGraphTask *pushPromise(Promise<Input> &p) override {
-			p.reserve();
 			prom.push(&p);
-			ASSERT(handler);
-			handler->handle();
+			myNode.tryJoinTask();
 			return nullptr;
 		}
 		
@@ -377,107 +372,220 @@ class QueueingInputPort : public Receiver<Input>{
 		}
 
 	private:
-		Handler *handler;
-		FifoQueue<Promise<Input>*> prom;
+		JNode &myNode;
+		FifoQueue<Promise<Input>> prom;
 };
 
-template<typename T>
-struct JoinMsg : public GenericMsg{
-	std::vector<T> elements;
+
+template<typename OutTuple, size_t Num, typename JNode>
+struct PortPack;
+
+template<typename OutTuple, size_t Num, typename JNode>
+struct PortPack{
+		PortPack(JNode& i)
+			: input(i)
+			, next(i)
+		{}
+
+		bool hasElements(){
+			return input.hasPromise() ? next.hasElements() : false;
+		}
+
+		//QueueingInputPort* get() override { return &input }
+		//AbstractPortPack* getNext() override { return &next; }
+
+		QueueingInputPort<typename std::tuple_element<Num, OutTuple>::type, JNode> input;
+		PortPack<OutTuple, Num - 1, JNode> next;
 };
 
-template<typename NodeType, typename Input, typename Output, size_t NumPorts>
+template<typename OutTuple, typename JNode>
+struct PortPack<OutTuple, 0, JNode> {
+		PortPack(JNode& i)
+			: input(i)
+		{}
+
+		bool hasElements(){
+			return input.hasPromise(); 
+		}
+
+		//QueueingInputPort* get() override { return &input }
+		//AbstractPortPack* getNext() override { return nullptr; }
+
+		QueueingInputPort<typename std::tuple_element<0, OutTuple>::type, JNode> input;
+};
+template<typename OutTuple, size_t Num, typename JNode>
+struct FuturePack;
+
+template<typename OutTuple, size_t Num, typename JNode>
+struct FuturePack{
+	FuturePack(PortPack<OutTuple, Num, JNode>& p)
+		: prom(p.input.getPromise())
+		, next(p.next)
+	{
+	}
+
+	void setTask(FlowGraphTask* t){
+		f.setTask(t);
+		f.setProm(prom);
+		prom->registerFuture(f);
+		next.setTask(t);
+	}
+
+	Promise<typename std::tuple_element<Num, OutTuple>::type >* prom;
+	Future<typename std::tuple_element<Num, OutTuple>::type > f;
+	FuturePack<OutTuple, Num - 1, JNode> next;
+};
+
+template<typename OutTuple, typename JNode>
+struct FuturePack<OutTuple, 0, JNode>{
+	FuturePack(PortPack<OutTuple, 0, JNode>& p)
+		: prom(p.input.getPromise())
+	{
+	}
+
+	void setTask(FlowGraphTask* t){
+		f.setTask(t);
+		f.setProm(prom);
+		prom->registerFuture(f);
+	}
+
+	Promise<typename std::tuple_element<0, OutTuple>::type >* prom;
+	Future<typename std::tuple_element<0, OutTuple>::type> f;
+};
+
+template<class NodeType, typename OutTuple>
 class JoinTask : public FlowGraphTask{
 public:
-	JoinTask(NodeType &n, std::array<Promise<Input>*, NumPorts> *p)
-		: FlowGraphTask(NumPorts)
+	typedef FuturePack<OutTuple, std::tuple_size<OutTuple>::value - 1, JoinInput<OutTuple> > FutPack; 
+
+	JoinTask(NodeType &n, FutPack* f)
+		: FlowGraphTask(std::tuple_size<OutTuple>::value)
 		, myNode(n)
+		, myInput(f)
 		, myOutput(*this)
 	{
-		for(size_t i = 0; i < NumPorts; i++){
-			myInput[i].setTask(this);
-			myInput[i].setProm((*p)[i]);
-			(*p)[i]->registerFuture(myInput[i]);
-			(*p)[i]->release();
-		}
-		delete p;
+		f->setTask(this);
+	}
+
+	~JoinTask(){
+		delete myInput;
 	}
 
 	void bodyFunc() override{
-		JoinMsg<Input> msg;
-		for(auto &i : myInput){
-			msg.elements.push_back(i.getVal());
-			i.release();
-		}
-		myOutput.write(msg);
-	};
+		OutTuple t;
+		FutureToTuple<OutTuple, NodeType, std::tuple_size<OutTuple>::value - 1> ftt(*myInput, t);
+		myOutput.write(t);
+	}
 
 	void expand(int depth) override{
 		for(auto n : myNode.successors()){
-			FlowGraphTask *t = n->pushPromise(myOutput);
-			if(t != nullptr && depth != 0){
-				t->expand(depth > 0 ? depth - 1 : depth);
-			}
+			/*FlowGraphTask *t =*/ n->pushPromise(myOutput);
+			//if(t != nullptr && depth != 0){
+				//t->expand(depth > 0 ? depth - 1 : depth);
+			//}
 		}	
 	}
 
-	Output *getOutput(){
+	Promise<OutTuple>* getOutput(){
 		return &myOutput;
 	};
 
 private:
+	template<typename Tuple, typename Node, size_t Num>
+	struct FutureToTuple{
+		FutureToTuple(FuturePack<Tuple, Num, Node>& fp, Tuple& ot)
+			: next(fp.next, ot)
+		{
+			std::get<Num>(ot) = fp.f.getVal();
+			fp.f.release();
+		}
+
+		FutureToTuple<Tuple, Node, Num - 1> next;
+	}; 
+
+	template<typename Tuple, typename Node>
+	struct FutureToTuple<Tuple, Node, 0>{
+		FutureToTuple(FuturePack<Tuple, 0, Node>& fp, Tuple& ot)
+		{
+			std::get<0>(ot) = fp.f.getVal();
+			fp.f.release();
+		}
+
+	}; 
+
 	NodeType &myNode;
-	Promise<Output> myOutput;
-	std::array<Future<Input>, NumPorts> myInput;
+	Promise<OutTuple> myOutput;
+	FutPack* myInput;
 };
 
-template <typename Input, typename Output, size_t NumPorts>
-class JoinInput : public Handler{
+template<typename OutTuple, size_t Num>
+struct PortStruct{
+	PortStruct(PortPack<OutTuple, Num, JoinInput<OutTuple> > &p)
+		: next(p.next)
+		, pp(p)
+	{}
+
+	void* getPort(size_t port){
+		return Num == port ? static_cast<void*>(&pp.input) : next.getPort(port - 1);
+	}
+
+	PortStruct<OutTuple, Num - 1> next;
+	PortPack<OutTuple, Num, JoinInput<OutTuple> > &pp;
+};
+
+template<typename OutTuple>
+struct PortStruct<OutTuple, 0>{
+	PortStruct(PortPack<OutTuple, 0, JoinInput<OutTuple> > &p)
+		: pp(p)
+	{}
+
+	void* getPort(size_t port){
+		return static_cast<void*>(&pp.input);
+	}
+
+	PortPack<OutTuple, 0, JoinInput<OutTuple> > &pp;
+};
+
+template <typename OutTuple>
+class JoinInput {
 	public:
 		JoinInput()
+			: inPorts(*this)
 		{
-			for(auto &i : inPorts){
-				i.setHandler(this);
-			}	
 		};
 
-		Receiver<Input> &getInPort(size_t portNum){ 
-			return inPorts[portNum]; 
+		template<size_t Port>
+		Receiver<typename std::tuple_element<Port, OutTuple>::type > &getInPort(){ 
+			PortStruct<OutTuple, std::tuple_size<OutTuple>::value - 1> ps(inPorts); 
+			void* ret = ps.getPort(Port);
+			return *static_cast<Receiver<typename std::tuple_element<Port, OutTuple>::type >* >(ret); 
 		}
 		
-		void handle() override {
-			tryJoinTask();
-		}
+		virtual std::vector<Receiver<OutTuple>* > successors() = 0;
 
-		virtual std::vector<Receiver<GenericMsg>*> successors() = 0;
-	private:
 		void tryJoinTask() {
 			mythos::Mutex::Lock guard(mutex);
-			for(auto &i : inPorts){
-				if(!i.hasPromise())
-					return;
-			}
-			std::array<Promise<Input>*, NumPorts> *pred = new std::array<Promise<Input>*, NumPorts>;
-			for(size_t i = 0; i < NumPorts; i++){
-				(*pred)[i] = inPorts[i].getPromise();	
-				ASSERT((*pred)[i] != nullptr);
-			}
-			new JoinTask<JoinInput<Input, Output, NumPorts>, Input, Output, NumPorts>(*this, pred);
-		}
 
-		std::array<QueueingInputPort<Input>, NumPorts> inPorts;
+			if(inPorts.hasElements()){
+			
+				new JoinTask<JoinInput<OutTuple>, OutTuple >(*this, new FuturePack<OutTuple, std::tuple_size<OutTuple>::value - 1, JoinInput<OutTuple> >(inPorts));
+			}
+		}
+	private:
+
+		PortPack<OutTuple, std::tuple_size<OutTuple>::value - 1, JoinInput<OutTuple>> inPorts;
 		mythos::Mutex mutex;
 };
 
-template <size_t NumPorts>
-class JoinNode : public GraphNode, public JoinInput<GenericMsg, GenericMsg, NumPorts>, public Sender<GenericMsg>{
+template <typename OutTuple>
+class JoinNode : public GraphNode, public JoinInput<OutTuple>, public Sender<OutTuple>{
 	public:
 		JoinNode(Graph &g)
 			: GraphNode(g)
 		{}
 
-		std::vector<Receiver<GenericMsg>*> successors(){
-			return Sender<GenericMsg>::successors();
+		std::vector<Receiver<OutTuple>*> successors(){
+			return Sender<OutTuple>::successors();
 		}	
 
 };
@@ -536,36 +644,37 @@ private:
 	NodeType &myNode;
 };
 
-class SourceNode : public GraphNode, public Sender<GenericMsg>{
+template<typename Output>
+class SourceNode : public GraphNode, public Sender<Output>{
 	public:
-		typedef SourceBody<GenericMsg&, bool> SourceBodyType;
+		typedef SourceBody<Output&, bool> SourceBodyType;
 
 		template<typename Body>
 		SourceNode(Graph &g, Body body)
 			: GraphNode(g)
-			, myBody(new SourceBodyLeaf<GenericMsg&, bool, Body>(body))
+			, myBody(new SourceBodyLeaf<Output&, bool, Body>(body))
 		{}
 
 		~SourceNode(){
 			delete myBody;
 		}
 
-		std::vector<Receiver<GenericMsg>*> successors(){
-			return Sender<GenericMsg>::successors();
+		std::vector<Receiver<Output>*> successors(){
+			return Sender<Output>::successors();
 		}
 
 		void activate(){
-			new SourceTask<SourceNode, GenericMsg>(*this);
+			new SourceTask<SourceNode, Output>(*this);
 		}	
 
 	private:
-		bool applyBody(GenericMsg &m){
+		bool applyBody(Output &m){
 			return (*myBody)(m);	
 		}
 
 		SourceBodyType *myBody;
 
-	template<typename NodeType, typename Output> friend class SourceTask;
+	template<typename NodeType, typename Out> friend class SourceTask;
 };
 
 //template<typename NodeType, typename Output, size_t NumPorts>
