@@ -1,11 +1,9 @@
 #pragma once
 
 #include "Task.hh"
+#include "runtime/mlog.hh"
 
-#include <list>
 #include <vector>
-#include <string>
-#include <iostream>
 
 namespace Prothos{
 
@@ -52,18 +50,18 @@ private:
 
 class MsgDagTask : public DagTask{
 	public:
-		MsgDagTask(int deps, std::string str)
+		MsgDagTask(int deps, const char *str)
 			: DagTask(deps)
 			, str(str)
 		{
 		}
 
 		void body() override{
-			std::cout << str << std::endl;
+			MLOG_INFO(mlog::app, str);
 		}
 
 	private:
-		std::string str;
+		const char *str;
 };
 
 } //Prothos

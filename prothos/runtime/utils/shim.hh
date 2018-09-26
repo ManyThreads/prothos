@@ -1,14 +1,15 @@
 #pragma once
 
-#include <ctime>
-#include <cstdlib>
+//#include <ctime>
+//#include <cstdlib>
+#include "runtime/umem.hh"
 
-#if __cplusplus <= 199711L
-#define thread_local __thread
-#define override
-#endif
+//#if __cplusplus <= 199711L
+//#define thread_local __thread
+//#define override
+//#endif
 
-#ifndef _ISOC11_SOURCE
+//#ifndef _ISOC11_SOURCE
 //#if !(_POSIX_C_SOURCE >= 200112L || _XOPEN_SOURCE >= 600)
 //#error Need atleast posix_memalign!
 //#endif
@@ -21,6 +22,6 @@
 		  return nullptr;
 		}
 	  }
-#endif
+//#endif
 
 
