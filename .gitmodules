@@ -1,0 +1,3 @@
+[submodule "mythos"]
+	path = mythos
+	url = git@github.com:ManyThreads/mythos.git
