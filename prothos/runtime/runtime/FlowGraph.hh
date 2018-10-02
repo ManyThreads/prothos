@@ -189,15 +189,15 @@ public:
         new Prothos::FlowGraph::Internal::SourceTask<SourceNode, Output>(*this);
     }
 
-    // TODO check, why this can not be private, when Interanl namespace is used
+private:
+    
     bool applyBody(Output &m) {
         return (*myBody)(m);
     }
 
-private:
     SourceBodyType *myBody;
 
-    template<typename NodeType, typename Out> friend class SourceTask;
+    template<typename NodeType, typename Out> friend class Prothos::FlowGraph::Internal::SourceTask;
 };
 
 } // FlowGraph
