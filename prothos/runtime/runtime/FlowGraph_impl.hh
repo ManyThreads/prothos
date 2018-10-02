@@ -16,9 +16,6 @@ namespace FlowGraph {
 namespace Internal {
 
 template<typename T>
-class Future;
-
-template<typename T>
 class Promise {
 public:
     Promise(FlowGraphTask& myTask)
@@ -43,8 +40,6 @@ public:
 
     void release() {
         refCount--;
-        //if(refCount == 0)
-        //delete &myTask;
     };
 
     std::atomic<Promise<T>*> next;
@@ -139,10 +134,7 @@ public:
     void expand(int depth) override {
         for(auto n : myNode.successors()) {
             ASSERT(n);
-            /*FlowGraphTask *t =*/ n->pushPromise(myOutput);
-            //if(t != nullptr && depth != 0){
-            //t->expand(depth > 0 ? depth - 1 : depth);
-            //}
+            n->pushPromise(myOutput);
         }
         expanded = true;
     }
@@ -208,10 +200,6 @@ private:
 
 };
 
-
-template <typename OutTuple>
-class JoinInput;
-
 template <typename Input, class JNode>
 class QueueingInputPort : public Receiver<Input> {
 public:
@@ -256,9 +244,6 @@ struct PortPack {
         return input.hasPromise() ? next.hasElements() : false;
     }
 
-    //QueueingInputPort* get() override { return &input }
-    //AbstractPortPack* getNext() override { return &next; }
-
     QueueingInputPort<typename std::tuple_element<Num, OutTuple>::type, JNode> input;
     PortPack<OutTuple, Num - 1, JNode> next;
 };
@@ -273,13 +258,8 @@ struct PortPack<OutTuple, 0, JNode> {
         return input.hasPromise();
     }
 
-    //QueueingInputPort* get() override { return &input }
-    //AbstractPortPack* getNext() override { return nullptr; }
-
     QueueingInputPort<typename std::tuple_element<0, OutTuple>::type, JNode> input;
 };
-template<typename OutTuple, size_t Num, typename JNode>
-struct FuturePack;
 
 template<typename OutTuple, size_t Num, typename JNode>
 struct FuturePack {
@@ -345,10 +325,6 @@ public:
     void expand(int depth) override {
         for(auto n : myNode.successors()) {
             n->pushPromise(myOutput);
-            /*FlowGraphTask *t =*/
-            //if(t != nullptr && depth != 0){
-            //t->expand(depth > 0 ? depth - 1 : depth);
-            //}
         }
     }
 
@@ -480,10 +456,7 @@ public:
             Promise<Output> *p = new Promise<Output>(*this);
             p->write(o);
             for(auto n : myNode.successors()) {
-                /*FlowGraphTask *t = */n->pushPromise(*p);
-                //if(t != nullptr && depth != 0){
-                //t->expand(depth > 0 ? depth - 1 : depth);
-                //}
+                n->pushPromise(*p);
             }
 
         }
