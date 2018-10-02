@@ -1,0 +1,15 @@
+# -*- mode:toml; -*-
+[module.thread-prothos]
+    incfiles = [
+        "thread/Thread.hh",
+        "thread/ThreadId.hh",
+        "thread/ThreadStack.hh",
+        "thread/ThreadState.hh",
+    ]
+
+    appfiles = [
+        "thread/Thread.cc",
+        "thread/ThreadId.cc",
+        "thread/ThreadStack.cc",
+        "thread/ThreadState.cc"
+    ]

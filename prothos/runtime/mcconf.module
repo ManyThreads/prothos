@@ -1,17 +1,4 @@
 # -*- mode:toml; -*-
 [module.runtime-prothos]
-    incfiles = [
-        "runtime/Task.hh",
-        "runtime/DAG.hh",
-        "utils/hlmsDeque.hh",
-        "utils/shim.hh",
-        "runtime/Worker.hh",
-        "runtime/Thread.hh",
-        "runtime/Thread.hpp",
-        "utils/FifoQueue.hh",
-        "runtime/FlowGraph.hh"
-    ]
-    appfiles = [
-        "runtime/Task.cc",
-        "runtime/Thread.cc"
-    ]
+    incfiles = [ "runtime/Task.hh", "runtime/DAG.hh", "utils/hlmsDeque.hh","utils/shim.hh", "runtime/Worker.hh", "runtime/Thread.hh", "utils/FifoQueue.hh", "runtime/FlowGraph.hh" ]
+    appfiles = [ "runtime/Task.cc", "runtime/Thread.cc"]

@@ -1,0 +1,58 @@
+{
+  "folders": [
+    {
+      "path": "prothos-amd64"
+    }
+  ],
+  "settings": {
+    "git.ignoreLimitWarning": true,
+    "editor.foldingStrategy": "indentation",
+    "files.associations": {
+      "atomic": "cpp",
+      "utility": "cpp",
+      "array": "cpp",
+      "*.tcc": "cpp",
+      "cctype": "cpp",
+      "clocale": "cpp",
+      "cmath": "cpp",
+      "cstddef": "cpp",
+      "cstdint": "cpp",
+      "cstdio": "cpp",
+      "cstdlib": "cpp",
+      "cstring": "cpp",
+      "cwchar": "cpp",
+      "cwctype": "cpp",
+      "unordered_map": "cpp",
+      "vector": "cpp",
+      "exception": "cpp",
+      "fstream": "cpp",
+      "functional": "cpp",
+      "initializer_list": "cpp",
+      "iosfwd": "cpp",
+      "istream": "cpp",
+      "limits": "cpp",
+      "memory": "cpp",
+      "new": "cpp",
+      "optional": "cpp",
+      "ostream": "cpp",
+      "sstream": "cpp",
+      "stdexcept": "cpp",
+      "streambuf": "cpp",
+      "string_view": "cpp",
+      "system_error": "cpp",
+      "type_traits": "cpp",
+      "tuple": "cpp",
+      "typeinfo": "cpp"
+    },
+    "editor.formatOnSave": true,
+    "C_Cpp.clang_format_sortIncludes": true,
+    "C_Cpp.clang_format_fallbackStyle": "LLVM",
+    "C_Cpp.default.cppStandard": "c++17",
+    "C_Cpp.default.intelliSenseMode": "gcc-x64",
+    "files.watcherExclude": {
+      "**/.git/objects/**": true,
+      "**/.git/subtree-cache/**": true,
+      "**/prothos-amd64/mythos/**": true
+    }
+  }
+}

@@ -1,0 +1,9 @@
+BasedOnStyle: LLVM
+AllowShortBlocksOnASingleLine: true
+AllowShortCaseLabelsOnASingleLine: true
+AllowShortFunctionsOnASingleLine: Empty
+AllowShortLoopsOnASingleLine: true
+NamespaceIndentation: All
+PointerAlignment: Left
+SortIncludes: true
+SpaceAfterCStyleCast: true
