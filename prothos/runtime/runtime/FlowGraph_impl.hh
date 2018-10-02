@@ -15,6 +15,47 @@ namespace Prothos {
 namespace FlowGraph {
 namespace Internal {
 
+static const int MaxDecodingDepth = 5; // (-1) for infinite unrolling
+
+class FlowGraphTask : public DagTask {
+public:
+    FlowGraphTask(int deps)
+        : DagTask(deps)
+        , expanded(false)
+    {
+    }
+
+    virtual void expand(int depth) = 0;
+
+    void body() {
+        preprocessing();
+        bodyFunc();
+        postprocessing();
+    }
+
+protected:
+    virtual void releaseParentTask() {
+        //todo: garbage collection
+    };
+
+    virtual void preprocessing() {}
+
+    virtual void bodyFunc() = 0;
+
+    virtual void postprocessing() {
+        releaseParentTask();
+        if(!expanded) expand(MaxDecodingDepth);
+    }
+
+    bool expanded;
+};
+
+template<typename T>
+class Future;
+
+
+
+
 template<typename T>
 class Promise {
 public:
@@ -97,6 +138,45 @@ private:
     FlowGraphTask* myTask;
 
 };
+
+template<typename Output>
+class Sender;
+
+template<typename Input>
+class Receiver {
+public:
+    virtual FlowGraphTask *pushPromise(Promise<Input> &p) = 0;
+    virtual void registerPredecessor(Sender<Input>& s) {};
+    virtual void removePredecessor(Sender<Input>& s) {};
+
+    //FlowGraphTask* pushValue(const Input &i) {
+    //    DummyInputTask<Input> *t = new DummyInputTask<Input>(i);
+    //    return pushPromise(t->prom);
+    //}
+};
+
+template<typename Output>
+class Sender {
+public:
+    std::vector<Receiver<Output>* > successors() {
+        return mySuccessors;
+    }
+    void registerSuccessor(Receiver<Output> &r) {
+        mySuccessors.push_back(&r);
+    }
+
+    void removeSuccessor(Receiver<Output> &r) {
+        mySuccessors.removeSuccessor(&r);
+        mySuccessors.erase(find(mySuccessors.begin(), mySuccessors.end(), r), mySuccessors.end());
+    }
+
+private:
+    std::vector<Receiver<Output>* > mySuccessors;
+
+    template<typename Out> friend class SourceNode;
+};
+
+
 
 template<typename T>
 class DummyInputTask : public FlowGraphTask {
@@ -298,6 +378,74 @@ struct FuturePack<OutTuple, 0, JNode> {
     Future<typename std::tuple_element<0, OutTuple>::type> f;
 };
 
+template<typename OutTuple, size_t Num>
+struct PortStruct;
+
+template<class NodeType, typename OutTuple>
+class JoinTask;
+
+template <typename OutTuple>
+class JoinInput {
+public:
+    JoinInput()
+        : inPorts(*this)
+    {
+    };
+
+    template<size_t Port>
+    Receiver<typename std::tuple_element<Port, OutTuple>::type > &getInPort() {
+        PortStruct<OutTuple, std::tuple_size<OutTuple>::value - 1> ps(inPorts);
+        void* ret = ps.getPort(Port);
+        return *static_cast<Receiver<typename std::tuple_element<Port, OutTuple>::type >* >(ret);
+    }
+
+    virtual std::vector<Receiver<OutTuple>* > successors() = 0;
+
+    void tryJoinTask() {
+        mythos::Mutex::Lock guard(mutex);
+
+        if(inPorts.hasElements()) {
+
+            new JoinTask<JoinInput<OutTuple>, OutTuple >(*this, new FuturePack<OutTuple, std::tuple_size<OutTuple>::value - 1, JoinInput<OutTuple> >(inPorts));
+        }
+    }
+private:
+
+    PortPack<OutTuple, std::tuple_size<OutTuple>::value - 1, JoinInput<OutTuple>> inPorts;
+    mythos::Mutex mutex;
+};
+
+template<typename OutTuple, size_t Num>
+struct PortStruct {
+    PortStruct(PortPack<OutTuple, Num, JoinInput<OutTuple> > &p)
+        : next(p.next)
+        , pp(p)
+    {}
+
+    void* getPort(size_t port) {
+        return Num == port ? static_cast<void*>(&pp.input) : next.getPort(port - 1);
+    }
+
+    PortStruct<OutTuple, Num - 1> next;
+    PortPack<OutTuple, Num, JoinInput<OutTuple> > &pp;
+};
+
+template<typename OutTuple>
+struct PortStruct<OutTuple, 0> {
+    PortStruct(PortPack<OutTuple, 0, JoinInput<OutTuple> > &p)
+        : pp(p)
+    {}
+
+    void* getPort(size_t port) {
+        return static_cast<void*>(&pp.input);
+    }
+
+    PortPack<OutTuple, 0, JoinInput<OutTuple> > &pp;
+};
+
+
+
+
 template<class NodeType, typename OutTuple>
 class JoinTask : public FlowGraphTask {
 public:
@@ -360,64 +508,8 @@ private:
     FutPack* myInput;
 };
 
-template<typename OutTuple, size_t Num>
-struct PortStruct {
-    PortStruct(PortPack<OutTuple, Num, JoinInput<OutTuple> > &p)
-        : next(p.next)
-        , pp(p)
-    {}
 
-    void* getPort(size_t port) {
-        return Num == port ? static_cast<void*>(&pp.input) : next.getPort(port - 1);
-    }
 
-    PortStruct<OutTuple, Num - 1> next;
-    PortPack<OutTuple, Num, JoinInput<OutTuple> > &pp;
-};
-
-template<typename OutTuple>
-struct PortStruct<OutTuple, 0> {
-    PortStruct(PortPack<OutTuple, 0, JoinInput<OutTuple> > &p)
-        : pp(p)
-    {}
-
-    void* getPort(size_t port) {
-        return static_cast<void*>(&pp.input);
-    }
-
-    PortPack<OutTuple, 0, JoinInput<OutTuple> > &pp;
-};
-
-template <typename OutTuple>
-class JoinInput {
-public:
-    JoinInput()
-        : inPorts(*this)
-    {
-    };
-
-    template<size_t Port>
-    Receiver<typename std::tuple_element<Port, OutTuple>::type > &getInPort() {
-        PortStruct<OutTuple, std::tuple_size<OutTuple>::value - 1> ps(inPorts);
-        void* ret = ps.getPort(Port);
-        return *static_cast<Receiver<typename std::tuple_element<Port, OutTuple>::type >* >(ret);
-    }
-
-    virtual std::vector<Receiver<OutTuple>* > successors() = 0;
-
-    void tryJoinTask() {
-        mythos::Mutex::Lock guard(mutex);
-
-        if(inPorts.hasElements()) {
-
-            new JoinTask<JoinInput<OutTuple>, OutTuple >(*this, new FuturePack<OutTuple, std::tuple_size<OutTuple>::value - 1, JoinInput<OutTuple> >(inPorts));
-        }
-    }
-private:
-
-    PortPack<OutTuple, std::tuple_size<OutTuple>::value - 1, JoinInput<OutTuple>> inPorts;
-    mythos::Mutex mutex;
-};
 
 template<typename Input, typename Output>
 class SourceBody {
