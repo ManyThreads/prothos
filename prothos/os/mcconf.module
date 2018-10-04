@@ -1,0 +1,7 @@
+# -*- mode:toml; -*-
+[module.os-prothos]
+    incfiles = [
+        "os/OS.hh"
+    ]
+
+    appfiles = []

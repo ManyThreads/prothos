@@ -3,28 +3,27 @@
 #include <utility>
 
 // OS related
-#include "runtime/CapMap.hh"
-#include "runtime/ExecutionContext.hh"
-#include "runtime/KernelMemory.hh"
-#include "runtime/PageMap.hh"
-#include "runtime/Portal.hh"
 #include "runtime/mlog.hh"
 #include "runtime/tls.hh"
 #include "util/assert.hh"
 
-extern uintptr_t PORTAL_POOL_ADDR;
-
-extern mythos::Portal PORTAL;
-extern mythos::KernelMemory KERNEL_MEM;
-extern mythos::PageMap ADDRESS_SPACE;
-extern mythos::CapMap CAPABILITY_SPACE;
+// Prothos runtime
+#include "os/OS.hh"
 
 namespace prothos {
-  thread_local ThreadState* local_state;
+  namespace thread {
+    thread_local ThreadState* local_state;
 
-  ThreadState& current_thread() {
-    return *local_state;
-  }
+    ThreadState& current_thread() {
+      return *local_state;
+    }
+
+    /** Mythos currently does not provide a way to determine the number of
+     * scheduling contexts */
+    uintptr_t hardware_concurrency() {
+      return 4;
+    }
+  } // namespace thread
 
   namespace {
     struct DtorGuard {
@@ -49,7 +48,7 @@ namespace prothos {
       ASSERT(state.use_count() == 2);
 
       // initialize TLS
-      local_state = state.get();
+      thread::local_state = state.get();
 
       DtorGuard guard(state);
       state->func();
@@ -60,13 +59,13 @@ namespace prothos {
 
   Thread::Thread(std::function<void()>&& func)
       : m_state(std::make_shared<ThreadState>(std::move(func))) {
-    mythos::PortalLock lock(PORTAL);
+    mythos::PortalLock lock(OS::PORTAL());
 
     auto tls = mythos::setupNewTLS();
     auto spawn_result =
-        m_state->ec.create(KERNEL_MEM)
-            .as(ADDRESS_SPACE)
-            .cs(CAPABILITY_SPACE)
+        m_state->ec.create(OS::KERNEL_MEM())
+            .as(OS::ADDRESS_SPACE())
+            .cs(OS::CAPABILITY_SPACE())
             .sched(mythos::init::SCHEDULERS_START + m_state->id)
             .prepareStack(static_cast<void*>(m_state->stack.top()))
             .startFun(thread_main, static_cast<void*>(&m_state))

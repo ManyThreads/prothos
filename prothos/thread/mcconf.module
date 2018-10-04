@@ -1,6 +1,7 @@
 # -*- mode:toml; -*-
 [module.thread-prothos]
     incfiles = [
+        "thread/PortalPool.hh",
         "thread/Thread.hh",
         "thread/ThreadId.hh",
         "thread/ThreadStack.hh",
@@ -8,6 +9,7 @@
     ]
 
     appfiles = [
+        "thread/PortalPool.cc",
         "thread/Thread.cc",
         "thread/ThreadId.cc",
         "thread/ThreadStack.cc",

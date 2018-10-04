@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <functional>
 #include <memory>
 
@@ -7,10 +8,17 @@
 #include "thread/ThreadState.hh"
 
 namespace prothos {
-  extern thread_local ThreadState* local_state;
-  ThreadState& current_thread();
+  namespace thread {
+    extern thread_local ThreadState* local_state;
 
-  /** Handle for thread */
+    /** Get a reference to the state the current thread */
+    ThreadState& current_thread();
+
+    /** Get the number of available hardware threads (scheduling contexts) */
+    uintptr_t hardware_concurrency();
+  } // namespace thread
+
+  /** Join handle for a thread */
   class Thread {
   public:
     explicit Thread(std::function<void()>&&);
