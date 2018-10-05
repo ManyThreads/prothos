@@ -21,6 +21,6 @@ namespace prothos {
     std::function<void(void)> func;
     std::atomic<bool> finished;
     mythos::ExecutionContext ec;
-    mythos::Portal portal;
+    mythos::Portal* portal = nullptr;
   };
 } // namespace prothos

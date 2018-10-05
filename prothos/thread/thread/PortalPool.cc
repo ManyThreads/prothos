@@ -8,12 +8,31 @@
 
 #include "mythos/caps.hh"
 #include "mythos/invocation.hh"
+#include "runtime/mlog.hh"
 #include "util/assert.hh"
 
 namespace prothos {
-  PortalPool::PortalPool() : m_frame(OS::CAP_ALLOC()()) {}
+  PortalPool::PortalPool() : m_frame(OS::CAP_ALLOC()()) {
+    init();
+  }
+
+  mythos::Portal& PortalPool::assign_portal(mythos::PortalLock& lock,
+                                            ThreadId id,
+                                            mythos::ExecutionContext& ec) {
+    ASSERT(id != 0 && id < thread::hardware_concurrency());
+    auto& portal = *(m_portals[id - 1].get());
+    auto offset = id * sizeof(mythos::InvocationBuf);
+
+    portal.bind(lock, m_frame, offset, ec.cap()).wait();
+    MLOG_INFO(mlog::app, "assigned portal to execution context");
+
+    return portal;
+  }
+
+  /** private */
 
   void PortalPool::init() {
+    MLOG_INFO(mlog::app, "initializing PortalPool...");
     mythos::PortalLock lock(OS::PORTAL());
 
     // map 2mb frame for storing the invocation buffers
@@ -34,5 +53,7 @@ namespace prothos {
 
       ++buffer_addr;
     }
+
+    MLOG_INFO(mlog::app, "PortalPool initialized");
   }
 } // namespace prothos

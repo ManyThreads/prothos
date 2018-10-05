@@ -7,5 +7,5 @@
 namespace prothos {
   ThreadState::ThreadState(std::function<void(void)>&& func)
       : id(), stack(), func(std::move(func)), finished(false),
-        ec(OS::CAP_ALLOC()()), portal(OS::CAP_ALLOC()(), nullptr) {}
+        ec(OS::CAP_ALLOC()()) {}
 } // namespace prothos

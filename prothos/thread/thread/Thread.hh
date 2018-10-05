@@ -7,12 +7,17 @@
 #include "thread/ThreadId.hh"
 #include "thread/ThreadState.hh"
 
+#include "runtime/Portal.hh"
+
 namespace prothos {
   namespace thread {
     extern thread_local ThreadState* local_state;
 
     /** Get a reference to the state the current thread */
     ThreadState& current_thread();
+
+    /** Get a reference to the thread local portal */
+    mythos::Portal& local_portal();
 
     /** Get the number of available hardware threads (scheduling contexts) */
     uintptr_t hardware_concurrency();

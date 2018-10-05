@@ -17,6 +17,7 @@ namespace prothos {
 
   /** private */
 
+  /** Thread IDs start at 1 */
   ThreadId::ThreadId() {
     static std::atomic<uintptr_t> COUNTER(1);
     m_id = COUNTER.fetch_add(1);

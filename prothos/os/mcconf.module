@@ -4,4 +4,6 @@
         "os/OS.hh"
     ]
 
-    appfiles = []
+    appfiles = [
+        "os/OS.cc"
+    ]

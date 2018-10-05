@@ -13,12 +13,14 @@ namespace prothos {
   class PortalPool final {
   public:
     PortalPool();
-    void init();
-    mythos::Portal& bind_portal(ThreadId& id, mythos::ExecutionContext& ec);
+    mythos::Portal& assign_portal(mythos::PortalLock&, ThreadId,
+                                  mythos::ExecutionContext&);
 
   private:
     static constexpr size_t POOL_SIZE = 2 * 1024 * 1024;
     static constexpr uintptr_t POOL_ADDR = 26 * 1024 * 1024;
+
+    void init();
 
     mythos::Frame m_frame;
     std::vector<std::unique_ptr<mythos::Portal>> m_portals;

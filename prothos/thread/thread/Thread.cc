@@ -18,6 +18,10 @@ namespace prothos {
       return *local_state;
     }
 
+    mythos::Portal& local_portal() {
+      *local_state->portal;
+    }
+
     /** Mythos currently does not provide a way to determine the number of
      * scheduling contexts */
     uintptr_t hardware_concurrency() {
@@ -60,7 +64,6 @@ namespace prothos {
   Thread::Thread(std::function<void()>&& func)
       : m_state(std::make_shared<ThreadState>(std::move(func))) {
     mythos::PortalLock lock(OS::PORTAL());
-
     auto tls = mythos::setupNewTLS();
     auto spawn_result =
         m_state->ec.create(OS::KERNEL_MEM())
@@ -73,14 +76,16 @@ namespace prothos {
             .fs(tls)
             .invokeVia(lock)
             .wait();
-
     ASSERT(!spawn_result.isError());
-    MLOG_INFO(mlog::app, "thread spawned...");
 
-    // m_state.portal.setbuf(reinterpret_cast<mythos::InvocationBuf*>(
-    //    PORTAL_POOL_ADDR + m_state.id * sizeof(mythos::InvocationBuf)));
-    // m_state.portal.create(lock, KERNEL_MEM).wait();
-    // m_state.portal.bind(lock, frame, );
+    m_state->portal =
+        &OS::PORTAL_POOL().assign_portal(lock, m_state->id, m_state->ec);
+
+    // TODO: requires fix in mythos
+    auto resume_result = m_state->ec.resume(lock).wait();
+    ASSERT(!resume_result.isError());
+
+    MLOG_INFO(mlog::app, "thread spawned...");
   }
 
   Thread::~Thread() {
