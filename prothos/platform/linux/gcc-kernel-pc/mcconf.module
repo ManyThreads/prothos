@@ -1,0 +1,28 @@
+# -*- mode:toml; -*-
+[module.gcc-linux]
+    incfiles = [ "util/compiler.hh" ]
+    requires = [ "tag/platform/linux", "tag/compiler/gcc" ]
+
+    makefile_head = '''
+LD=ld
+NM=nm
+OBJDUMP=objdump
+STRIP=strip
+
+APP_CXX = $(CXX) 
+APP_AS = $(KERNEL_AS)
+APP_CPPFLAGS += $(CPPFLAGS)
+APP_CPPFLAGS += -I.
+APP_CXXFLAGS += $(CXXFLAGS)
+APP_CXXFLAGS += -std=c++11
+#APP_CXXFLAGS += -O2 -g3 -ggdb -gdwarf-2
+APP_CXXFLAGS += -O2 -g
+APP_LD = $(LD)
+APP_LDFLAGS += -g -static
+
+INITAPP_CXX = $(CXX) 
+INITAPP_CPPFLAGS += $(CPPFLAGS)
+INITAPP_CPPFLAGS += -I.
+INITAPP_CXXFLAGS += $(CXXFLAGS)
+INITAPP_CXXFLAGS += -std=c++11
+'''

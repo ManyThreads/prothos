@@ -5,4 +5,5 @@ all:
 
 clean:
 	rm -f *.log
-	rm -rf prothos-amd64
+	rm -rf mythos-amd64
+	rm -rf linux

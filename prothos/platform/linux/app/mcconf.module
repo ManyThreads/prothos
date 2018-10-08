@@ -1,16 +1,13 @@
 # -*- mode:toml; -*-
-[module.app-init-prothos]
+[module.app-init-prothos-linux]
     initappfiles = [ "app/init.cc" ]
-    provides = [ "app/init" ]
-    requires = [ "tag/platform/linux"]
+    provides = [ "app/init", "iostream" ]
+    requires = [ "tag/platform/linux" ] 
 
     makefile_head = '''
-TARGETS += app/init.elf
+TARGETS += app/init
 '''
     makefile_body = '''
-app/init: $(INITAPPFILES_OBJ) $(APPFILES_OBJ) $(CRTFILES_OBJ)
-	$(APP_CXX) $(APP_LDFLAGS) $(APP_CXXFLAGS) -nostdlib -o $@ runtime/start.o runtime/crtbegin.o $(INITAPPFILES_OBJ) $(APPFILES_OBJ) $(APP_LIBS) runtime/crtend.o
-	$(NM)  $@ | cut -d " " -f 1,3 | c++filt -t > init.sym
-	$(OBJDUMP) -dS $@ | c++filt > init.disasm
-	$(STRIP) $@
+app/init: $(INITAPPFILES_OBJ) $(APPFILES_OBJ) 
+	$(APP_CXX) $(APP_LDFLAGS) $(APP_CXXFLAGS) -o $@ $(INITAPPFILES_OBJ) $(APPFILES_OBJ) $(APP_LIBS)
 '''

@@ -1,8 +1,8 @@
 # -*- mode:toml; -*-
-[module.app-init-prothos]
+[module.app-init-prothos-mythos]
     initappfiles = [ "app/init.cc" ]
     provides = [ "app/init.elf" ]
-    requires = [ "crtbegin", "mythos"]
+    requires = [ "crtbegin", "tag/platform/mythos"]
 
     makefile_head = '''
 TARGETS += app/init.elf
