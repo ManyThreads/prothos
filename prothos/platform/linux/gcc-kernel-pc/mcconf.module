@@ -2,6 +2,7 @@
 [module.gcc-linux]
     incfiles = [ "util/compiler.hh" ]
     requires = [ "tag/platform/linux", "tag/compiler/gcc" ]
+	provides = ["tuple", "functional", "vector", "algorithm", "array", "cstddef", "atomic", "cstdlib", "mutex", "string.h", "cstdint", "unistd.h", "cstring", "assert.h", "fstream", "thread", "new", "utility", "type_traits", "sys/un.h", "sys/socket.h"]
 
     makefile_head = '''
 LD=ld

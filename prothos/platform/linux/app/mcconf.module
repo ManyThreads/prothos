@@ -10,4 +10,7 @@ TARGETS += app/init
     makefile_body = '''
 app/init: $(INITAPPFILES_OBJ) $(APPFILES_OBJ) 
 	$(APP_CXX) $(APP_LDFLAGS) $(APP_CXXFLAGS) -o $@ $(INITAPPFILES_OBJ) $(APPFILES_OBJ) $(APP_LIBS)
+
+run: app/init
+	app/init
 '''

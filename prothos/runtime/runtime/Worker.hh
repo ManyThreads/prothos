@@ -4,7 +4,7 @@
 #include "runtime/Task.hh"
 #include "runtime/Thread.hh"
 //#include "WorkerMap.hh"
-#include "runtime/mlog.hh"
+//#include "runtime/mlog.hh"
 
 //#include <unistd.h>
 #include <vector>
@@ -91,8 +91,8 @@ class Worker : public GroupWorker, public Thread{
 		}
 
 		void run(){
-			MLOG_INFO(mlog::app, __func__);
-    MLOG_INFO(mlog::app, "worker ", DVARhex(getLocalThread()));
+			//MLOG_INFO(mlog::app, __func__);
+    //MLOG_INFO(mlog::app, "worker ", DVARhex(getLocalThread()));
 			int cycle = 0;
 			while(running){
 				//cycle = (cycle+1)%100;
@@ -126,7 +126,7 @@ class Worker : public GroupWorker, public Thread{
 					//usleep(100);
 				}
 			}
-			MLOG_INFO(mlog::app, "worker out! *drops mic*");
+			//MLOG_INFO(mlog::app, "worker out! *drops mic*");
 		}
 
 		// spawn local task

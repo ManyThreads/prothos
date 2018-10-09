@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Task.hh"
-#include "runtime/mlog.hh"
+//#include "runtime/mlog.hh"
 
 #include <vector>
 
@@ -57,7 +57,7 @@ class MsgDagTask : public DagTask{
 		}
 
 		void body() override{
-			MLOG_INFO(mlog::app, str);
+			//MLOG_INFO(mlog::app, str);
 		}
 
 	private:

@@ -1,6 +1,5 @@
 #pragma once
 
-#include "runtime/mlog.hh"
 #include "util/assert.hh"
 #include <atomic>
 
@@ -15,7 +14,6 @@ class FifoQueue
 		{}
 
 		void push(T* e){
-			//MLOG_INFO(mlog::app, __func__, DVAR(e), DVAR(this));
 			ASSERT(e);
 			auto h =head.load();
 			do{
@@ -38,7 +36,6 @@ class FifoQueue
 			}
 				
 			if(tail != nullptr){
-				//MLOG_INFO(mlog::app, __func__, DVAR(tail), DVAR(this));
 				ret = tail;
 				tail = tail->next;
 			}
