@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <thread>
+#include <array>
 
 namespace Prothos{
 	class Thread;
@@ -23,9 +24,22 @@ public:
   Thread()
   {}
 
+  void start(){
+	t = std::thread(&Thread::startup, this);
+  }
+
+  void join(){
+	t.join();
+  }
+
+  void startup(){
+	localThread = this;
+	run();
+  }
 
   virtual void run() = 0;
-
+private:
+  std::thread t;
 };
 
 template<size_t SIZE, class T>
@@ -36,16 +50,20 @@ public:
 
   ThreadGroup() {};
 
-  //static_assert(
-    //std::is_base_of<Thread, T>::value,
-    //"T must be a descendant of Thread"
-  //);
+  void finalize(){
+	for(auto &t : threads){
+		t.join();
+	}
+  }
 
   void start()
   {
+	  for(auto &t : threads){
+		t.start();
+	  }
   }
 protected:
-  T threads[num_threads];
+  std::array<T, SIZE> threads;
 };
 
 } //Prothos

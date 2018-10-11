@@ -4,7 +4,7 @@
 #include "runtime/Task.hh"
 #include "runtime/Thread.hh"
 //#include "WorkerMap.hh"
-//#include "runtime/mlog.hh"
+#include "runtime/mlog.hh"
 
 //#include <unistd.h>
 #include <vector>
@@ -17,6 +17,7 @@ class WorkerGroup{
 	public:
 	  virtual void pushTask(Task* t) = 0;
 	  virtual void start() = 0;
+	  virtual void finalize() {};
 	private:
 	  virtual Worker* getRandomWorker() = 0;
       virtual Worker* getNextWorker(Worker* self) = 0;
@@ -48,6 +49,9 @@ class FixedWorkerGroup : public WorkerGroup, public ThreadGroup<SIZE, Worker> {
 		}
 	  }
 
+	  void finalize() override {
+		WorkerGroup::finalize();
+	  }
 	  Worker* getRandomWorker() override {
 		static size_t w = 0;
 		w = (w+1)%SIZE;
@@ -91,7 +95,7 @@ class Worker : public GroupWorker, public Thread{
 		}
 
 		void run(){
-			//MLOG_INFO(mlog::app, __func__);
+			MLOG_INFO(mlog::app, __func__);
     //MLOG_INFO(mlog::app, "worker ", DVARhex(getLocalThread()));
 			int cycle = 0;
 			while(running){
@@ -108,7 +112,7 @@ class Worker : public GroupWorker, public Thread{
 				}
 				// execute a task from low priotiy queue
 				if((t = lpQueue.pop())){
-					//MLOG_INFO(mlog::app, "got LP task");
+					MLOG_INFO(mlog::app, "got LP task");
 					t->executeTask();
 					if(!running){
 						break;
@@ -131,14 +135,14 @@ class Worker : public GroupWorker, public Thread{
 
 		// spawn local task
 		void pushWsTask(Task *t){
-			//MLOG_INFO(mlog::app, __func__, DVAR(t), DVAR(this));
+			MLOG_INFO(mlog::app, __func__, DVAR(t), DVAR(this));
 			wsQueue.push_bottom(t);
 			//MLOG_INFO(mlog::app, "pushed");
 		}
 
 		// push task from external worker/thread (low priority)
 		void pushTask(Task *t){
-			//MLOG_INFO(mlog::app, __func__, DVAR(t), DVAR(this));
+			MLOG_INFO(mlog::app, __func__, DVAR(t), DVAR(this));
 			lpQueue.push(t);
 		}
 
@@ -169,6 +173,7 @@ class TerminationTask : public Task{
 		}
 
 		void execute() override {
+			MLOG_INFO(mlog::app, __PRETTY_FUNCTION__);
 			Worker* curr = Worker::getLocalWorker();
 			curr->running = false;
 			Worker* next = Worker::getNextWorker();
@@ -191,7 +196,7 @@ class TerminationMarkerTask : public Task{
 		}
 
 		void execute() override {
-			//MLOG_INFO(mlog::app, __func__);
+			MLOG_INFO(mlog::app, __PRETTY_FUNCTION__);
 			Worker* curr = Worker::getLocalWorker();
 			if((w == nullptr) || (!curr->isIdle)){
 				curr->isIdle = true;

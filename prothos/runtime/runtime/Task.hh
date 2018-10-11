@@ -1,5 +1,5 @@
 #pragma once
-//#include "runtime/mlog.hh"
+#include "runtime/mlog.hh"
 #include "utils/FifoQueue.hh"
 #include <atomic>
 
@@ -76,7 +76,7 @@ class MsgTask : public WorkstealingTask{
 		}
 
 		void execute() override{
-			//MLOG_INFO(mlog::app, str);
+			MLOG_INFO(mlog::app, str);
 		}
 
 	private:

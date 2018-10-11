@@ -18,12 +18,14 @@ APP_CXXFLAGS += $(CXXFLAGS)
 APP_CXXFLAGS += -std=c++11
 #APP_CXXFLAGS += -O2 -g3 -ggdb -gdwarf-2
 APP_CXXFLAGS += -O2 -g
+APP_CXXFLAGS += -lpthread
 APP_LD = $(LD)
-APP_LDFLAGS += -g -static
+APP_LDFLAGS += -g -static -pthread
 
 INITAPP_CXX = $(CXX) 
 INITAPP_CPPFLAGS += $(CPPFLAGS)
 INITAPP_CPPFLAGS += -I.
 INITAPP_CXXFLAGS += $(CXXFLAGS)
 INITAPP_CXXFLAGS += -std=c++11
+INITAPP_CXXFLAGS += -lpthread
 '''

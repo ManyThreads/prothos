@@ -9,7 +9,7 @@ using namespace Prothos;
 
 int main()
 {
-	std::cout << "Hello World" << std::endl;
+	MLOG_INFO(mlog::app, "Hello World! ");
 
   Task* fgt = new UserTask( [](){
 	  FlowGraph::Graph g;
@@ -45,7 +45,18 @@ int main()
 	  //numGen->activate();
   });
 
-	fgt->executeTask();
+  UserTask* t0 = new UserTask([](){
+	MLOG_INFO(mlog::app, "UserTask t0 start");
+	for(int i = 0; i < 5; i++){
+		//(new MsgDagTask(0,"Hello"))->addSucc(new MsgDagTask(1," World")); 
+		new MsgTask("Hello World :D");
+	}
+});
+	WorkerGroup* wg = new FixedWorkerGroup<3>;
+	wg->start();
+	wg->pushTask(t0);
+	  wg->pushTask(new TerminationMarkerTask());
+	wg->finalize();
 	return 0;
 }
 

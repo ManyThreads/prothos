@@ -36,7 +36,7 @@ namespace mlog {
   {
   public:
     virtual ~DebugSink() {}
-    virtual void write(char const* str, size_t len) { std::cerr.write(str,len); }
+    virtual void write(char const* str, size_t len) { std::cerr.write(str,len); std::cerr.put('\n'); }
     virtual void writeTrace(char const* str, size_t len) { write(str,len); };
     virtual void flush() {}
   };
