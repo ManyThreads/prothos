@@ -1,0 +1,16 @@
+# -*- mode:toml; -*-
+[module.app-init-prothos-linux]
+    initappfiles = [ "app/init.cc" ]
+    provides = [ "app/init", "iostream" ]
+    requires = [ "tag/platform/linux" ] 
+
+    makefile_head = '''
+TARGETS += app/init
+'''
+    makefile_body = '''
+app/init: $(INITAPPFILES_OBJ) $(APPFILES_OBJ) 
+	$(APP_CXX) $(APP_LDFLAGS) $(APP_CXXFLAGS) -o $@ $(INITAPPFILES_OBJ) $(APPFILES_OBJ) $(APP_LIBS)
+
+run: app/init
+	app/init
+'''

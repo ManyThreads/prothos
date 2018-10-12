@@ -1,0 +1,4 @@
+# -*- mode:toml; -*-
+[module.application-prothos]
+    incfiles = [ ] 
+    appfiles = [ ] 

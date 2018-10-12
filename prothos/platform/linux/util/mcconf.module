@@ -1,0 +1,5 @@
+# -*- mode:toml; -*-
+[module.utils-prothos-linux]
+    incfiles = [ "util/PhysPtr.hh", "util/aligments.hh",
+    "util/Range.hh", "util/assert.hh"]
+    requires = [ "tag/platform/linux" ]

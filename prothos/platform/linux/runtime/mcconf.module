@@ -1,0 +1,5 @@
+# -*- mode:toml; -*-
+[module.runtime-prothos-linux]
+    incfiles = [ "runtime/Thread.hh", "utils/shim.hh", "utils/Mutex.hh"]
+    appfiles = [ "runtime/Thread.cc"]
+    requires = [ "tag/platform/linux"]

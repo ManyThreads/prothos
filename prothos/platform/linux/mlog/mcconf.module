@@ -1,0 +1,4 @@
+[module.app-mlog-prothos-linux]
+    incfiles = [ "runtime/mlog.hh" ]
+    appfiles = [ "runtime/mlog.cc", "runtime/DebugSink.cc"]
+	requires = [ "tag/platform/linux"]
