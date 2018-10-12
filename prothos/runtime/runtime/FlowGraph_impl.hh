@@ -280,6 +280,7 @@ private:
 
 };
 
+class ContMsg {};
 
 template<typename NodeType, typename Output>
 class ContinueTask : public FlowGraphTask {
@@ -293,7 +294,7 @@ public:
 
     void bodyFunc() override {
         Promise<Output> *p = new Promise<Output>(*this);
-        p->write( o );
+        p->write( myNode.applyBody() );
         for(auto n : myNode.successors()) {
             n->pushPromise(*p);
         }
@@ -308,15 +309,15 @@ private:
     Output o;
 };
 
-template<typename NodeType, typename Input, typename Output>
-class ContinueInput : public Receiver<Input> {
+template<typename NodeType, typename Output>
+class ContinueInput : public Receiver<ContMsg> {
 public:
 
-    typedef FunctionBody<Input, Output> FunctionBodyType;
+    typedef FunctionBody<ContMsg, Output> FunctionBodyType;
 
     template<typename Body>
     ContinueInput(NodeType & node, Body &body, size_t count)
-        : myBody(new FunctionBodyLeaf<Input, Output, Body>(body))
+        : myBody(new FunctionBodyLeaf<ContMsg, Output, Body>(body))
         , count(count)
         , myNode(node)
     {
@@ -324,15 +325,15 @@ public:
     }
 
     
-    Output applyBody() {
-        return (*myBody)();
+    Output applyBody(ContMsg &msg) {
+        return (*myBody)(msg);
     }
     
-    FlowGraphTask *pushPromise(Promise<Input> &p) override {
+    FlowGraphTask *pushPromise(Promise<ContMsg> &p) override {
         ASSERT( count > 0 );
         count --;
         if ( count == 0) {
-            new ContinueTask<NodeType, Output>(myNode, applyBody());
+            new ContinueTask<NodeType, Output>(myNode);
         }
         return nullptr;
     }
