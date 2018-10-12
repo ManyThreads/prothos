@@ -49,6 +49,29 @@ public:
     }
 };
 
+template <typename Input, typename Output>
+class ContinueNode: public GraphNode, public Internal::ContinueInput<ContinueNode<Input, Output>, Input, Output>, public Internal::Sender<Output> {
+public:
+    template<typename Body>
+    ContinueNode(Graph &g, Body &body, size_t count)
+        : GraphNode(g)
+        , Internal::ContinueInput<ContinueNode<Input, Output>, Input, Output>(this, body, count)
+    {}
+
+    std::vector<Internal::Receiver<Output>*> successors() override {
+        return Internal::Sender<Output>::successors();
+    }
+};
+
+template <typename Input, typename Output>
+class SplitNode: public ContinueNode<Input, Output> {
+public:
+    template<typename Body>
+    SplitNode(Graph &g, Body &body)
+    : ContinueNode<Input, Output>(g,body,1) {}
+};
+
+
 template <typename OutTuple>
 class JoinNode : public GraphNode, public Internal::JoinInput<OutTuple>, public Internal::Sender<OutTuple> {
 public:

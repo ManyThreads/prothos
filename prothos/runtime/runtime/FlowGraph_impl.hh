@@ -280,6 +280,70 @@ private:
 
 };
 
+
+template<typename NodeType, typename Output>
+class ContinueTask : public FlowGraphTask {
+public:
+    ContinueTask(NodeType &n, Output o)
+        : FlowGraphTask(0)
+        , myNode(n)
+        , o(o)
+    {
+    }
+
+    void bodyFunc() override {
+        Promise<Output> *p = new Promise<Output>(*this);
+        p->write( o );
+        for(auto n : myNode.successors()) {
+            n->pushPromise(*p);
+        }
+    }
+
+    void expand(int depth) override {
+        expanded = true;
+    }
+
+private:
+    NodeType & myNode;
+    Output o;
+};
+
+template<typename NodeType, typename Input, typename Output>
+class ContinueInput : public Receiver<Input> {
+public:
+
+    typedef FunctionBody<Input, Output> FunctionBodyType;
+
+    template<typename Body>
+    ContinueInput(NodeType & node, Body &body, size_t count)
+        : myBody(new FunctionBodyLeaf<Input, Output, Body>(body))
+        , count(count)
+        , myNode(node)
+    {
+         ASSERT( count > 0 );
+    }
+
+    
+    Output applyBody() {
+        return (*myBody)();
+    }
+    
+    FlowGraphTask *pushPromise(Promise<Input> &p) override {
+        ASSERT( count > 0 );
+        count --;
+        if ( count == 0) {
+            new ContinueTask<NodeType, Output>(myNode, applyBody());
+        }
+        return nullptr;
+    }
+    
+    
+private:
+    size_t count;
+    FunctionBodyType * myBody;
+    NodeType & myNode;
+};
+
 template <typename Input, class JNode>
 class QueueingInputPort : public Receiver<Input> {
 public:
@@ -313,6 +377,9 @@ private:
 template<typename OutTuple, size_t Num, typename JNode>
 struct PortPack;
 
+/**
+* legt rekursiv die input ports an
+*/
 template<typename OutTuple, size_t Num, typename JNode>
 struct PortPack {
     PortPack(JNode& i)
@@ -430,6 +497,9 @@ struct PortStruct {
     PortPack<OutTuple, Num, JoinInput<OutTuple> > &pp;
 };
 
+/**
+* gibt ref auf input port
+*/
 template<typename OutTuple>
 struct PortStruct<OutTuple, 0> {
     PortStruct(PortPack<OutTuple, 0, JoinInput<OutTuple> > &p)
@@ -481,6 +551,9 @@ public:
     };
 
 private:
+    /**
+    * könnte evtl raus und durch funktion
+    */
     template<typename Tuple, typename Node, size_t Num>
     struct FutureToTuple {
         FutureToTuple(FuturePack<Tuple, Num, Node>& fp, Tuple& ot)
