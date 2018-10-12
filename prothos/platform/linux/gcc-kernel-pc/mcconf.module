@@ -20,7 +20,7 @@ APP_CXXFLAGS += -std=c++11
 APP_CXXFLAGS += -O2 -g
 APP_CXXFLAGS += -lpthread
 APP_LD = $(LD)
-APP_LDFLAGS += -g -static -pthread
+APP_LDFLAGS += -g -pthread
 
 INITAPP_CXX = $(CXX) 
 INITAPP_CPPFLAGS += $(CPPFLAGS)

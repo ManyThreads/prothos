@@ -1,5 +1,6 @@
 #pragma once
 
+#include "runtime/mlog.hh"
 #include <cstddef>
 #include <thread>
 #include <array>
@@ -25,6 +26,7 @@ public:
   {}
 
   void start(){
+	MLOG_INFO(mlog::app, __func__, DVAR(&t));
 	t = std::thread(&Thread::startup, this);
   }
 
