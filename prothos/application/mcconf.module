@@ -1,4 +1,4 @@
 # -*- mode:toml; -*-
 [module.application-prothos]
-    incfiles = [ ] 
+    incfiles = [ "app/UserApp.hh" ] 
     appfiles = [ ] 

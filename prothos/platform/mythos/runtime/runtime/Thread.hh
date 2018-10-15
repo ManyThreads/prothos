@@ -102,6 +102,8 @@ public:
       threads[i].start(i, f, vaddr);
     }
   }
+
+  void finalize(){}
 protected:
   T threads[num_threads];
 };
