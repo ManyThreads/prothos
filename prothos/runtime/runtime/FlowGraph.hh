@@ -96,6 +96,29 @@ private:
     template<typename NodeType, typename Out> friend class Internal::SourceTask;
 };
 
+template<typename Input, typename Output, size_t Ports>
+class ConditionalNode : public GraphNode, public Internal::CondInput<Input, Output, Ports>{
+public:
+	template<typename Body>
+	ConditionalNode(Graph &g, Body body)
+		: GraphNode(g)
+		, Internal::CondInput<Input, Output, Ports>(body)
+	{}
+
+    std::vector<Internal::Receiver<Output>*> successors(size_t port) override {
+        ASSERT(port < Ports);
+		return sender[port].successors();
+    }
+
+	Internal::Sender<Output>& get(size_t port){
+        ASSERT(port < Ports);
+		return sender[port];
+	}
+
+private:
+	Internal::Sender<Output> sender[Ports];
+};
+
 } // FlowGraph
 } // Prothos
 

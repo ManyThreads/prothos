@@ -123,7 +123,7 @@ class Worker : public GroupWorker, public Thread{
 				Worker *victim = getGroup()->getRandomWorker();
 				t = victim->tryStealTask();
 				if(t){
-					MLOG_INFO(mlog::app, "Task stolen");
+					//MLOG_INFO(mlog::app, "Task stolen");
 					isIdle = false;
 					t->executeTask();
 				}else{
