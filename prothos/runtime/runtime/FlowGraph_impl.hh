@@ -345,6 +345,63 @@ private:
     NodeType & myNode;
 };
 
+
+
+template<typename NodeType, typename Output>
+class SplitTask : public FlowGraphTask {
+public:
+    SplitTask(NodeType &n, Output o)
+        : FlowGraphTask(0)
+        , myNode(n)
+        , o(o)
+    {
+    }
+
+    void bodyFunc() override {
+        Promise<Output> *p = new Promise<Output>(*this);
+        p->write( o );
+        for(auto n : myNode.successors()) {
+            n->pushPromise(*p);
+        }
+    }
+
+    void expand(int depth) override {
+        expanded = true;
+    }
+
+private:
+    NodeType & myNode;
+    Output o;
+};
+
+template<typename NodeType, typename Input, typename Output>
+class SplitInput : public Receiver<Input> {
+public:
+
+    typedef FunctionBody<Input, Output> FunctionBodyType;
+
+    template<typename Body>
+    SplitInput(NodeType & node, Body &body)
+        : myBody(new FunctionBodyLeaf<Input, Output, Body>(body))
+        , myNode(node)
+    {}
+
+    
+    Output applyBody() {
+        return (*myBody)();
+    }
+    
+    FlowGraphTask *pushPromise(Promise<Input> &p) override {
+        return new SplitTask<NodeType, Output>(myNode, applyBody());
+    }
+    
+    
+private:
+    FunctionBodyType * myBody;
+    NodeType & myNode;
+};
+
+
 template <typename Input, class JNode>
 class QueueingInputPort : public Receiver<Input> {
 public:
