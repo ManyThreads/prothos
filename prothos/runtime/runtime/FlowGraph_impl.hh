@@ -285,10 +285,9 @@ class ContMsg {};
 template<typename NodeType, typename Output>
 class ContinueTask : public FlowGraphTask {
 public:
-    ContinueTask(NodeType &n, Output o)
+    ContinueTask(NodeType &n)
         : FlowGraphTask(0)
         , myNode(n)
-        , o(o)
     {
     }
 
@@ -306,7 +305,6 @@ public:
 
 private:
     NodeType & myNode;
-    Output o;
 };
 
 template<typename NodeType, typename Output>
@@ -346,32 +344,34 @@ private:
 };
 
 
-
-template<typename NodeType, typename Output>
+template<typename NodeType, typename Input, typename Output>
 class SplitTask : public FlowGraphTask {
 public:
-    SplitTask(NodeType &n, Output o)
+    SplitTask(NodeType &n, Promise<Input> &p)
         : FlowGraphTask(0)
+        , myInput(&p, this)
+        , myOutput(*this)        
         , myNode(n)
-        , o(o)
     {
     }
 
     void bodyFunc() override {
-        Promise<Output> *p = new Promise<Output>(*this);
-        p->write( o );
-        for(auto n : myNode.successors()) {
-            n->pushPromise(*p);
-        }
+        myOutput.write(myNode.applyBody(myInput.getVal()));
+        myInput.release();
     }
 
     void expand(int depth) override {
+        for(auto n : myNode.successors()) {
+            ASSERT(n);
+            n->pushPromise(myOutput);
+        }
         expanded = true;
     }
 
 private:
+    Future<Input> myInput;
+    Promise<Output> myOutput;
     NodeType & myNode;
-    Output o;
 };
 
 template<typename NodeType, typename Input, typename Output>
@@ -387,12 +387,12 @@ public:
     {}
 
     
-    Output applyBody() {
-        return (*myBody)();
+    Output applyBody(const Input &i) {
+        return (*myBody)(i);
     }
     
     FlowGraphTask *pushPromise(Promise<Input> &p) override {
-        return new SplitTask<NodeType, Output>(myNode, applyBody());
+        return new SplitTask<NodeType,Input, Output>(myNode);
     }
     
     
