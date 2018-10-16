@@ -338,6 +338,7 @@ public:
         return nullptr;
     }
     
+    virtual std::vector<Receiver<Output>*> successors() = 0;
     
 private:
 	const size_t num;
