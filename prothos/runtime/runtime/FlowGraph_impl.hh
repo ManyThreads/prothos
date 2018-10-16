@@ -693,6 +693,101 @@ private:
     NodeType &myNode;
 };
 
+template<typename Input, typename Output>
+class CondBody {
+public:
+    virtual ~CondBody() {};
+    virtual int operator()(const Input &i, Output &o) = 0;
+};
+
+template<typename Input, typename Output, typename Body>
+class CondBodyLeaf : public CondBody<Input, Output> {
+public:
+    CondBodyLeaf( const Body body)
+        : myBody(body)
+    {}
+
+    int operator() (const Input &i, Output &o) {
+        return myBody(i, o);
+    }
+
+private:
+    Body myBody;
+};
+
+template<typename NodeType, typename Input, typename Output, size_t Ports>
+class ApplyCondBodyTask : public FlowGraphTask {
+public:
+    ApplyCondBodyTask(NodeType &n, Promise<Input> &p)
+        : FlowGraphTask(1)
+        , myNode(n)
+        , myInput(&p, this)
+        , myOutput(*this)
+		, port(-1)
+		, expandable(false)
+    {
+        p.registerFuture(myInput);
+    }
+
+    void bodyFunc() override {
+		Output o;
+        port = myNode.applyBody(myInput.getVal(), o);
+		//if(port < Ports && port >=0){
+			//myOutput[nuim].write(o);
+		//}
+		myOutput.write(o);
+        myInput.release();
+		expandable = true;
+    };
+
+    void expand(int depth) override {
+        if(expandable){
+			if(port < Ports && port >=0){
+				for(auto n : myNode.successors(port)) {
+					ASSERT(n);
+					n->pushPromise(myOutput);
+				}
+			}
+			expanded = true;
+		}
+    }
+
+private:
+    NodeType &myNode;
+    Future<Input> myInput;
+    //Promise<Output> myOutput[Ports];
+	Promise<Output> myOutput;
+	int port;
+	bool expandable;
+};
+
+template<typename Input, typename Output, size_t Ports>
+class CondInput : public Receiver<Input> {
+public:
+    typedef CondBody<Input, Output> CondBodyType;
+
+    template<typename Body>
+    CondInput(Body &body)
+        : myBody(new CondBodyLeaf<Input, Output, Body>(body))
+    {}
+
+    int applyBody( const Input &i, Output &out) {
+        return (*myBody)(i, out);
+    }
+
+    FlowGraphTask *pushPromise(Promise<Input> &p) override {
+        return new ApplyCondBodyTask<CondInput<Input, Output, Ports>, Input, Output, Ports>(*this, p);
+    }
+
+    ~CondInput() {
+        delete myBody;
+    }
+
+    virtual std::vector<Receiver<Output>*> successors(size_t port) = 0;
+private:
+    CondBodyType *myBody;
+
+};
 
 } //Internal
 } //FlowGraph

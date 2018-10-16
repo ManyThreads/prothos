@@ -5,7 +5,7 @@
 //#include <assert.h>
 
 //#include "atomic.h"
-#include "shim.hh"
+#include "utils/shim.hh"
 #include <atomic>
 //using namespace std;
 

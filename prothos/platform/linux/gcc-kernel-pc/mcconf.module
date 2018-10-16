@@ -1,0 +1,31 @@
+# -*- mode:toml; -*-
+[module.gcc-linux]
+    incfiles = [ "util/compiler.hh" ]
+    requires = [ "tag/platform/linux", "tag/compiler/gcc" ]
+	provides = ["tuple", "functional", "vector", "algorithm", "array", "cstddef", "atomic", "cstdlib", "mutex", "string.h", "cstdint", "unistd.h", "cstring", "assert.h", "fstream", "thread", "new", "utility", "type_traits", "sys/un.h", "sys/socket.h"]
+
+    makefile_head = '''
+LD=ld
+NM=nm
+OBJDUMP=objdump
+STRIP=strip
+
+APP_CXX = $(CXX) 
+APP_AS = $(KERNEL_AS)
+APP_CPPFLAGS += $(CPPFLAGS)
+APP_CPPFLAGS += -I.
+APP_CXXFLAGS += $(CXXFLAGS)
+APP_CXXFLAGS += -std=c++11
+#APP_CXXFLAGS += -O2 -g3 -ggdb -gdwarf-2
+APP_CXXFLAGS += -O2 -g
+APP_CXXFLAGS += -lpthread
+APP_LD = $(LD)
+APP_LDFLAGS += -g -pthread
+
+INITAPP_CXX = $(CXX) 
+INITAPP_CPPFLAGS += $(CPPFLAGS)
+INITAPP_CPPFLAGS += -I.
+INITAPP_CXXFLAGS += $(CXXFLAGS)
+INITAPP_CXXFLAGS += -std=c++11
+INITAPP_CXXFLAGS += -lpthread
+'''

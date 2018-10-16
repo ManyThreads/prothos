@@ -17,6 +17,7 @@ class WorkerGroup{
 	public:
 	  virtual void pushTask(Task* t) = 0;
 	  virtual void start() = 0;
+	  virtual void finalize() = 0;;
 	private:
 	  virtual Worker* getRandomWorker() = 0;
       virtual Worker* getNextWorker(Worker* self) = 0;
@@ -48,6 +49,9 @@ class FixedWorkerGroup : public WorkerGroup, public ThreadGroup<SIZE, Worker> {
 		}
 	  }
 
+	  void finalize() override {
+		ThreadGroup<SIZE, Worker>::finalize();
+	  }
 	  Worker* getRandomWorker() override {
 		static size_t w = 0;
 		w = (w+1)%SIZE;
@@ -92,7 +96,7 @@ class Worker : public GroupWorker, public Thread{
 
 		void run(){
 			MLOG_INFO(mlog::app, __func__);
-    MLOG_INFO(mlog::app, "worker ", DVARhex(getLocalThread()));
+			//MLOG_INFO(mlog::app, "worker ", DVARhex(getLocalThread()));
 			int cycle = 0;
 			while(running){
 				//cycle = (cycle+1)%100;
@@ -164,11 +168,11 @@ class TerminationTask : public Task{
 		{
 			Worker* curr = Worker::getLocalWorker();
 			first = curr;
-			//curr->running = false;	
 			setState(Ready);
 		}
 
 		void execute() override {
+			//MLOG_INFO(mlog::app, __PRETTY_FUNCTION__);
 			Worker* curr = Worker::getLocalWorker();
 			curr->running = false;
 			Worker* next = Worker::getNextWorker();
@@ -191,7 +195,7 @@ class TerminationMarkerTask : public Task{
 		}
 
 		void execute() override {
-			//MLOG_INFO(mlog::app, __func__);
+			//MLOG_INFO(mlog::app, __PRETTY_FUNCTION__);
 			Worker* curr = Worker::getLocalWorker();
 			if((w == nullptr) || (!curr->isIdle)){
 				curr->isIdle = true;
