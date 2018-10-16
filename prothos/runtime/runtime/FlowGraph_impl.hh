@@ -316,7 +316,8 @@ public:
     template<typename Body>
     ContinueInput(NodeType & node, Body &body, size_t count)
         : myBody(new FunctionBodyLeaf<ContMsg, Output, Body>(body))
-        , count(count)
+        , num(count)
+		, count(count)
         , myNode(node)
     {
          ASSERT( count > 0 );
@@ -332,12 +333,14 @@ public:
         count --;
         if ( count == 0) {
             new ContinueTask<NodeType, Output>(myNode);
+			count = num;
         }
         return nullptr;
     }
     
     
 private:
+	const size_t num;
     size_t count;
     FunctionBodyType * myBody;
     NodeType & myNode;
