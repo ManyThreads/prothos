@@ -307,18 +307,17 @@ private:
     NodeType & myNode;
 };
 
-template<typename NodeType, typename Output>
+template<typename Output>
 class ContinueInput : public Receiver<ContMsg> {
 public:
 
     typedef FunctionBody<ContMsg, Output> FunctionBodyType;
 
     template<typename Body>
-    ContinueInput(NodeType & node, Body &body, size_t count)
+    ContinueInput(Body &body, size_t count)
         : myBody(new FunctionBodyLeaf<ContMsg, Output, Body>(body))
         , num(count)
 		, count(count)
-        , myNode(node)
     {
          ASSERT( count > 0 );
     }
@@ -332,7 +331,7 @@ public:
         ASSERT( count > 0 );
         count --;
         if ( count == 0) {
-            new ContinueTask<NodeType, Output>(myNode);
+            new ContinueTask<ContinueInput<Output>, Output>(this);
 			count = num;
         }
         return nullptr;
@@ -344,7 +343,6 @@ private:
 	const size_t num;
     size_t count;
     FunctionBodyType * myBody;
-    NodeType & myNode;
 };
 
 

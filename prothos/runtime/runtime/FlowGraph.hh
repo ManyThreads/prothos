@@ -52,12 +52,12 @@ public:
 typedef Internal::ContMsg ContinueMsg;
 
 template <typename Output>
-class ContinueNode: public GraphNode, public Internal::ContinueInput<ContinueNode<Output>, Output>, public Internal::Sender<Output> {
+class ContinueNode: public GraphNode, public Internal::ContinueInput<Output>, public Internal::Sender<Output> {
 public:
     template<typename Body>
-    ContinueNode(Graph &g, Body &body, size_t count)
+    ContinueNode(Graph &g, Body body, size_t count)
         : GraphNode(g)
-        , Internal::ContinueInput<ContinueNode<Output>, Output>(this, body, count)
+        , Internal::ContinueInput<Output>(this, body, count)
     {}
 
     std::vector<Internal::Receiver<Output>*> successors() override {
@@ -70,7 +70,7 @@ template <typename Input, typename Output>
 class SplitNode: public GraphNode, public Internal::SplitInput<SplitNode<Input, Output>, Input, Output>, public Internal::Sender<Output> {
 public:
     template<typename Body>
-    SplitNode(Graph &g, Body &body)
+    SplitNode(Graph &g, Body body)
         : GraphNode(g)
         , Internal::SplitInput<SplitNode<Input, Output>, Input, Output>(this, body)
     {}
