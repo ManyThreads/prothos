@@ -285,26 +285,32 @@ class ContMsg {};
 template<typename NodeType, typename Output>
 class ContinueTask : public FlowGraphTask {
 public:
-    ContinueTask(NodeType &n)
+    ContinueTask(NodeType &n, Promise<ContMsg> &p)
         : FlowGraphTask(0)
         , myNode(n)
+        , myInput(&p, this)
+        , myOutput(*this)
     {
+        p.registerFuture(myInput);
     }
 
     void bodyFunc() override {
-        Promise<Output> *p = new Promise<Output>(*this);
-        p->write( myNode.applyBody() );
-        for(auto n : myNode.successors()) {
-            n->pushPromise(*p);
-        }
+        myOutput.write( myNode.applyBody(ContMsg()) );
+		myInput.release();
     }
 
     void expand(int depth) override {
+        for(auto n : myNode.successors()) {
+            n->pushPromise(*p);
+        }
         expanded = true;
     }
 
 private:
     NodeType & myNode;
+    Future<ContMsg> myInput;
+    Promise<Output> myOutput;
+
 };
 
 template<typename Output>
