@@ -301,7 +301,7 @@ public:
 
     void expand(int depth) override {
         for(auto n : myNode.successors()) {
-            n->pushPromise(*p);
+            n->pushPromise(myOutput);
         }
         expanded = true;
     }
@@ -324,6 +324,7 @@ public:
         : myBody(new FunctionBodyLeaf<ContMsg, Output, Body>(body))
         , num(count)
 		, count(count)
+        //, myNode(node)
     {
          ASSERT( count > 0 );
     }
@@ -339,6 +340,7 @@ public:
         if ( count == 0) {
             new ContinueTask<ContinueInput<Output>, Output>(this);
 			count = num;
+            new ContinueTask<NodeType, Output>(myNode);
         }
         return nullptr;
     }
@@ -369,6 +371,7 @@ public:
     }
 
     void expand(int depth) override {
+        // promise / ausgang
         for(auto n : myNode.successors()) {
             ASSERT(n);
             n->pushPromise(myOutput);
@@ -381,6 +384,32 @@ private:
     Promise<Output> myOutput;
     NodeType & myNode;
 };
+
+template<typename OutTuple>
+struct Senders {
+   
+    template<typename std::tuple_element<Port, OutTuple>::type
+    
+    struct Senders next;
+}
+
+template<typename... OutTypes>
+class SplitSender {
+public:
+SplitSender()
+        : outPorts(*this)
+    {
+    };
+
+    template<size_t Port>
+    Sender<typename std::tuple_element<Port, OutTuple>::type > &getOutPort() {
+        
+    }
+    
+private:
+        
+};
+
 
 template<typename NodeType, typename Input, typename Output>
 class SplitInput : public Receiver<Input> {
