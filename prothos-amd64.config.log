@@ -1,5 +1,6 @@
 processing configuration /home/oliver/Documents/prothos/prothos-amd64.config
-searching modules in /home/oliver/Documents/prothos/../mythos/3rdparty/mcconf/stdmodules
+searching modules in /home/oliver/Documents/prothos/./mythos/3rdparty/mcconf/stdmodules
+loaded mcconf-makefile from /home/oliver/Documents/prothos/mythos/3rdparty/mcconf/stdmodules/mcconf.toml
 searching modules in /home/oliver/Documents/prothos/mythos/kernel
 loaded util-first-fit-heap-intrusive from /home/oliver/Documents/prothos/mythos/kernel/util/first-fit-heap-intrusive/mcconf.module
 loaded kernel-amd64-pc from /home/oliver/Documents/prothos/mythos/kernel/boot/kernel-amd64-pc/mcconf.module
@@ -133,6 +134,8 @@ selecting module plugin-dump-multiboot
 selecting module gitignore
 Satisfy dependency runtime/mlog.hh with module app-mlog
 selecting module app-mlog
+Satisfy dependency Makefile with module mcconf-makefile
+selecting module mcconf-makefile
 Satisfy dependency functional with module cxxabi-app
 selecting module cxxabi-app
 Satisfy dependency runtime/SimpleCapAlloc.hh with module runtime-kobject
@@ -289,8 +292,8 @@ Satisfy dependency cpu/SerialStreamBuf.hh with module serial-port
 selecting module serial-port
 Satisfy dependency util/ICastable.hh with module util-castable
 selecting module util-castable
-Discarded module kmem-sfi because of unresolvable dependency on tag/boot/sfi
 Discarded module kmem-e820 because of unresolvable dependency on tag/boot/e820
+Discarded module kmem-sfi because of unresolvable dependency on tag/boot/sfi
 Satisfy dependency boot/kmem.hh with module kmem-multiboot
 selecting module kmem-multiboot
 Satisfy dependency objects/CapMap.hh with module objects-capmap
@@ -298,6 +301,8 @@ selecting module objects-capmap
 Satisfy dependency cpu/PIC.hh with module pic-disable-x86
 selecting module pic-disable-x86
 Discarded module gcc-host-pc because of unresolvable dependency on tag/mode/host
+Satisfy dependency objects/Example.hh with module objects_example
+selecting module objects_example
 Satisfy dependency objects/ExecutionContext.hh with module objects-execution-context
 selecting module objects-execution-context
 Discarded module lapic-kncapic because of unresolvable dependency on tag/cpu/kncapic
@@ -313,14 +318,11 @@ Satisfy dependency async/SimpleMonitorHome.hh with module simple-monitor-home
 selecting module simple-monitor-home
 Satisfy dependency boot/kmem-common.hh with module kmem-common
 selecting module kmem-common
-Satisfy dependency objects/Example.hh with module objects_example
-selecting module objects_example
 Satisfy dependency async/SynchronousTask.hh with module synchronous-task
 selecting module synchronous-task
 Discarded module gcc-host-pc because of unresolvable dependency on tag/mode/host
 Discarded module gcc-host-pc because of unresolvable dependency on tag/mode/host
-added modules to resolve dependencies: address, amd64-cpu-fpu, amd64-cpu-regs, amd64-pc-kernelspace, apboot-common, apboot-intelmp, app-common, app-mlog, assert, async-mutex-delegating, bochs-emu-amd64, boot-init-loader-amd64, capability-spinning, capability-utils, clflush-amd64, core-local-memory, cxx-globals, cxxabi-app, cxxabi-kernel, datatypes, emu-qemu-amd64, error-trace, fnv-1a, gcc-kernel-pc, host-info-table-knc, iso-image, kernel-amd64-pc, kernel-bug-amd64, kernel-entry-amd64, kernel-idle-hlt, kernel-main, kernel-threadid, kernelspace-amd64-pc, kmem-common, kmem-multiboot, lapic, lapic-xapic, memory-root, mlog-async, mlog-base, mlog-serial, monitor-common, mstring, mythos-caps, mythos-error, mythos-init, mythos-invocationBuffer, mythos-pci-mpsc-queue, nested-monitor-delegating, objects-capmap, objects-common, objects-cpudriver-knc, objects-execution-context, objects-kernel-memory, objects-memory-amd64, objects-portal, objects-scheduling-context, objects_example, optional, ostream, pic-disable-x86, plugin-common, runtime-async, runtime-kobject, runtime-memory, runtime-mlog, segments-amd64, segments-gdt-amd64, serial-port, simple-monitor-home, stacktrace, synchronous-task, thread-pause-amd64, util-bitfield, util-castable, util-elf64, util-first-fit-heap-intrusive, util-intelmp, util-linked-list, util-multiboot, util-mutex-tidex
-unresolved dependency Makefile required by [] provided by []
+added modules to resolve dependencies: address, amd64-cpu-fpu, amd64-cpu-regs, amd64-pc-kernelspace, apboot-common, apboot-intelmp, app-common, app-mlog, assert, async-mutex-delegating, bochs-emu-amd64, boot-init-loader-amd64, capability-spinning, capability-utils, clflush-amd64, core-local-memory, cxx-globals, cxxabi-app, cxxabi-kernel, datatypes, emu-qemu-amd64, error-trace, fnv-1a, gcc-kernel-pc, host-info-table-knc, iso-image, kernel-amd64-pc, kernel-bug-amd64, kernel-entry-amd64, kernel-idle-hlt, kernel-main, kernel-threadid, kernelspace-amd64-pc, kmem-common, kmem-multiboot, lapic, lapic-xapic, mcconf-makefile, memory-root, mlog-async, mlog-base, mlog-serial, monitor-common, mstring, mythos-caps, mythos-error, mythos-init, mythos-invocationBuffer, mythos-pci-mpsc-queue, nested-monitor-delegating, objects-capmap, objects-common, objects-cpudriver-knc, objects-execution-context, objects-kernel-memory, objects-memory-amd64, objects-portal, objects-scheduling-context, objects_example, optional, ostream, pic-disable-x86, plugin-common, runtime-async, runtime-kobject, runtime-memory, runtime-mlog, segments-amd64, segments-gdt-amd64, serial-port, simple-monitor-home, stacktrace, synchronous-task, thread-pause-amd64, util-bitfield, util-castable, util-elf64, util-first-fit-heap-intrusive, util-intelmp, util-linked-list, util-multiboot, util-mutex-tidex
 unresolved dependency memory required by [thread-prothos] provided by [gcc-host-pc]
 installing file /home/oliver/Documents/prothos/mythos/kernel/objects/memory-amd64/objects/PageMapAmd64.cc to /home/oliver/Documents/prothos/prothos-amd64/objects/PageMapAmd64.cc mode link from module objects-memory-amd64
 installing file /home/oliver/Documents/prothos/mythos/kernel/async/mutex-delegating/async/MutexDelegating.cc to /home/oliver/Documents/prothos/prothos-amd64/async/MutexDelegating.cc mode link from module async-mutex-delegating
@@ -351,6 +353,7 @@ installing file /home/oliver/Documents/prothos/mythos/kernel/objects/common/obje
 installing file /home/oliver/Documents/prothos/mythos/kernel/objects/common/objects/IScheduler.hh to /home/oliver/Documents/prothos/prothos-amd64/objects/IScheduler.hh mode link from module objects-common
 installing file /home/oliver/Documents/prothos/prothos/thread/thread/ThreadStack.hh to /home/oliver/Documents/prothos/prothos-amd64/thread/ThreadStack.hh mode link from module thread-prothos
 installing file /home/oliver/Documents/prothos/mythos/kernel/objects/cpudriver-knc/mythos/protocol/CpuDriverKNC.hh to /home/oliver/Documents/prothos/prothos-amd64/mythos/protocol/CpuDriverKNC.hh mode link from module objects-cpudriver-knc
+installing file /home/oliver/Documents/prothos/mythos/kernel/runtime/async/runtime/ISysretHandler.hh to /home/oliver/Documents/prothos/prothos-amd64/runtime/ISysretHandler.hh mode link from module runtime-async
 installing file /home/oliver/Documents/prothos/mythos/kernel/runtime/memory/runtime/tls.cc to /home/oliver/Documents/prothos/prothos-amd64/runtime/tls.cc mode link from module runtime-memory
 installing file /home/oliver/Documents/prothos/mythos/kernel/objects/common/objects/ISchedulable.hh to /home/oliver/Documents/prothos/prothos-amd64/objects/ISchedulable.hh mode link from module objects-common
 installing file /home/oliver/Documents/prothos/mythos/kernel/boot/init-loader-amd64/boot/load_init.hh to /home/oliver/Documents/prothos/prothos-amd64/boot/load_init.hh mode link from module boot-init-loader-amd64
@@ -361,6 +364,7 @@ installing file /home/oliver/Documents/prothos/mythos/kernel/cpu/segments-amd64/
 installing file /home/oliver/Documents/prothos/mythos/kernel/util/optional/util/optional.hh to /home/oliver/Documents/prothos/prothos-amd64/util/optional.hh mode link from module optional
 installing file /home/oliver/Documents/prothos/mythos/kernel/cpu/idle-hlt/cpu/idle_lowlevel.S to /home/oliver/Documents/prothos/prothos-amd64/cpu/idle_lowlevel.S mode link from module kernel-idle-hlt
 installing file /home/oliver/Documents/prothos/mythos/kernel/build/cxxabi-kernel/util/stl/string to /home/oliver/Documents/prothos/prothos-amd64/util/stl/string mode link from module cxxabi-kernel
+installing file /home/oliver/Documents/prothos/mythos/kernel/cpu/kernel-entry-amd64/cpu/syscall_entry.S to /home/oliver/Documents/prothos/prothos-amd64/cpu/syscall_entry.S mode link from module kernel-entry-amd64
 installing file /home/oliver/Documents/prothos/mythos/kernel/cpu/segments-amd64/cpu/SegmentDescriptor.hh to /home/oliver/Documents/prothos/prothos-amd64/cpu/SegmentDescriptor.hh mode link from module segments-amd64
 installing file /home/oliver/Documents/prothos/mythos/kernel/build/cxxabi-kernel/util/cxxsupport.cc to /home/oliver/Documents/prothos/prothos-amd64/util/cxxsupport.cc mode link from module cxxabi-kernel
 installing file /home/oliver/Documents/prothos/mythos/kernel/cpu/kernel-entry-amd64/cpu/kernel_entry.hh to /home/oliver/Documents/prothos/prothos-amd64/cpu/kernel_entry.hh mode link from module kernel-entry-amd64
@@ -385,11 +389,13 @@ installing file /home/oliver/Documents/prothos/mythos/kernel/mythos/invocation/m
 installing file /home/oliver/Documents/prothos/mythos/kernel/async/monitor-common/async/Place.cc to /home/oliver/Documents/prothos/prothos-amd64/async/Place.cc mode link from module monitor-common
 installing file /home/oliver/Documents/prothos/mythos/kernel/util/datatypes/util/VectorMax.hh to /home/oliver/Documents/prothos/prothos-amd64/util/VectorMax.hh mode link from module datatypes
 installing file /home/oliver/Documents/prothos/mythos/kernel/boot/kernelspace-amd64/boot/init-kernelspace-common.hh to /home/oliver/Documents/prothos/prothos-amd64/boot/init-kernelspace-common.hh mode link from module amd64-pc-kernelspace
+installing file /home/oliver/Documents/prothos/mythos/3rdparty/mcconf/stdmodules/mako_Makefile to /home/oliver/Documents/prothos/prothos-amd64/Makefile mode mako from module mcconf-makefile
 installing file /home/oliver/Documents/prothos/mythos/kernel/cpu/stacktrace/cpu/stacktrace.hh to /home/oliver/Documents/prothos/prothos-amd64/cpu/stacktrace.hh mode link from module stacktrace
 installing file /home/oliver/Documents/prothos/mythos/kernel/async/monitor-common/async/Tasklet.hh to /home/oliver/Documents/prothos/prothos-amd64/async/Tasklet.hh mode link from module monitor-common
 installing file /home/oliver/Documents/prothos/mythos/kernel/runtime/memory/runtime/brk.cc to /home/oliver/Documents/prothos/prothos-amd64/runtime/brk.cc mode link from module runtime-memory
 installing file /home/oliver/Documents/prothos/mythos/kernel/objects/memory-amd64/objects/FrameDataAmd64.hh to /home/oliver/Documents/prothos/prothos-amd64/objects/FrameDataAmd64.hh mode link from module objects-memory-amd64
 installing file /home/oliver/Documents/prothos/mythos/kernel/mythos/invocation/mythos/protocol/CapMap.hh to /home/oliver/Documents/prothos/prothos-amd64/mythos/protocol/CapMap.hh mode link from module mythos-invocationBuffer
+installing file /home/oliver/Documents/prothos/mythos/3rdparty/mcconf/stdmodules/mako_mcconf to /home/oliver/Documents/prothos/prothos-amd64/mcconf mode mako from module mcconf-makefile
 installing file /home/oliver/Documents/prothos/mythos/kernel/util/ostream/util/streambuf.hh to /home/oliver/Documents/prothos/prothos-amd64/util/streambuf.hh mode link from module ostream
 installing file /home/oliver/Documents/prothos/mythos/kernel/runtime/cxx/runtime/string.cc to /home/oliver/Documents/prothos/prothos-amd64/runtime/string.cc mode link from module cxxabi-app
 installing file /home/oliver/Documents/prothos/mythos/kernel/cpu/kernel-entry-amd64/cpu/irq_entry.S to /home/oliver/Documents/prothos/prothos-amd64/cpu/irq_entry.S mode link from module kernel-entry-amd64
@@ -441,7 +447,7 @@ installing file /home/oliver/Documents/prothos/mythos/kernel/cpu/kernel-bug-amd6
 installing file /home/oliver/Documents/prothos/mythos/kernel/runtime/kobject/runtime/KernelMemory.hh to /home/oliver/Documents/prothos/prothos-amd64/runtime/KernelMemory.hh mode link from module runtime-kobject
 installing file /home/oliver/Documents/prothos/prothos/os/os/OS.hh to /home/oliver/Documents/prothos/prothos-amd64/os/OS.hh mode link from module os-prothos
 installing file /home/oliver/Documents/prothos/mythos/kernel/objects/capmap/objects/CapMap.cc to /home/oliver/Documents/prothos/prothos-amd64/objects/CapMap.cc mode link from module objects-capmap
-installing file /home/oliver/Documents/prothos/mythos/kernel/util/datatypes/util/BacktrackBuffer.hh to /home/oliver/Documents/prothos/prothos-amd64/util/BacktrackBuffer.hh mode link from module datatypes
+installing file /home/oliver/Documents/prothos/mythos/kernel/build/cxxabi-kernel/util/stl/algorithm to /home/oliver/Documents/prothos/prothos-amd64/util/stl/algorithm mode link from module cxxabi-kernel
 installing file /home/oliver/Documents/prothos/mythos/kernel/runtime/kobject/runtime/ExecutionContext.hh to /home/oliver/Documents/prothos/prothos-amd64/runtime/ExecutionContext.hh mode link from module runtime-kobject
 installing file /home/oliver/Documents/prothos/mythos/kernel/util/address/util/RangeSet.hh to /home/oliver/Documents/prothos/prothos-amd64/util/RangeSet.hh mode link from module address
 installing file /home/oliver/Documents/prothos/mythos/kernel/objects/capability-utils/objects/CapRef.cc to /home/oliver/Documents/prothos/prothos-amd64/objects/CapRef.cc mode link from module capability-utils
@@ -449,7 +455,7 @@ installing file /home/oliver/Documents/prothos/mythos/kernel/mythos/invocation/m
 installing file /home/oliver/Documents/prothos/mythos/kernel/util/mlog-base/util/Filter.hh to /home/oliver/Documents/prothos/prothos-amd64/util/Filter.hh mode link from module mlog-base
 installing file /home/oliver/Documents/prothos/mythos/kernel/objects/common/objects/mlog.cc to /home/oliver/Documents/prothos/prothos-amd64/objects/mlog.cc mode link from module objects-common
 installing file /home/oliver/Documents/prothos/mythos/kernel/objects/kernel-memory/objects/KernelMemory.cc to /home/oliver/Documents/prothos/prothos-amd64/objects/KernelMemory.cc mode link from module objects-kernel-memory
-installing file /home/oliver/Documents/prothos/mythos/kernel/runtime/async/runtime/ISysretHandler.hh to /home/oliver/Documents/prothos/prothos-amd64/runtime/ISysretHandler.hh mode link from module runtime-async
+installing file /home/oliver/Documents/prothos/mythos/kernel/util/datatypes/util/BacktrackBuffer.hh to /home/oliver/Documents/prothos/prothos-amd64/util/BacktrackBuffer.hh mode link from module datatypes
 installing file /home/oliver/Documents/prothos/mythos/kernel/util/assert/util/assert.cc to /home/oliver/Documents/prothos/prothos-amd64/util/assert.cc mode link from module assert
 installing file /home/oliver/Documents/prothos/mythos/kernel/runtime/crt-init/runtime/crtbegin.cc to /home/oliver/Documents/prothos/prothos-amd64/runtime/crtbegin.cc mode link from module app-common
 installing file /home/oliver/Documents/prothos/mythos/kernel/boot/apboot-common/boot/DeployHWThread.hh to /home/oliver/Documents/prothos/prothos-amd64/boot/DeployHWThread.hh mode link from module apboot-common
@@ -532,7 +538,6 @@ installing file /home/oliver/Documents/prothos/mythos/kernel/mythos/invocation/m
 installing file /home/oliver/Documents/prothos/mythos/kernel/util/error-trace/util/error-trace.cc to /home/oliver/Documents/prothos/prothos-amd64/util/error-trace.cc mode link from module error-trace
 installing file /home/oliver/Documents/prothos/mythos/kernel/util/tidex-mutex/util/TidexMutex.hh to /home/oliver/Documents/prothos/prothos-amd64/util/TidexMutex.hh mode link from module util-mutex-tidex
 installing file /home/oliver/Documents/prothos/mythos/kernel/cpu/core-local-memory/cpu/CoreLocal.hh to /home/oliver/Documents/prothos/prothos-amd64/cpu/CoreLocal.hh mode link from module core-local-memory
-installing file /home/oliver/Documents/prothos/mythos/kernel/build/cxxabi-kernel/util/stl/algorithm to /home/oliver/Documents/prothos/prothos-amd64/util/stl/algorithm mode link from module cxxabi-kernel
 installing file /home/oliver/Documents/prothos/mythos/kernel/objects/common/objects/ISchedulable.cc to /home/oliver/Documents/prothos/prothos-amd64/objects/ISchedulable.cc mode link from module objects-common
 installing file /home/oliver/Documents/prothos/mythos/kernel/util/string/util/mstring.hh to /home/oliver/Documents/prothos/prothos-amd64/util/mstring.hh mode link from module mstring
 installing file /home/oliver/Documents/prothos/mythos/kernel/objects/common/objects/INotification.hh to /home/oliver/Documents/prothos/prothos-amd64/objects/INotification.hh mode link from module objects-common
@@ -541,7 +546,7 @@ installing file /home/oliver/Documents/prothos/mythos/kernel/objects/example/obj
 installing file /home/oliver/Documents/prothos/mythos/kernel/async/synchronous-task/async/SynchronousTask.hh to /home/oliver/Documents/prothos/prothos-amd64/async/SynchronousTask.hh mode link from module synchronous-task
 installing file /home/oliver/Documents/prothos/mythos/kernel/mythos/invocation/mythos/protocol/KernelMemory.hh to /home/oliver/Documents/prothos/prothos-amd64/mythos/protocol/KernelMemory.hh mode link from module mythos-invocationBuffer
 installing file /home/oliver/Documents/prothos/mythos/kernel/runtime/memory/runtime/umem.cc to /home/oliver/Documents/prothos/prothos-amd64/runtime/umem.cc mode link from module runtime-memory
-installing file /home/oliver/Documents/prothos/mythos/kernel/cpu/kernel-entry-amd64/cpu/syscall_entry.S to /home/oliver/Documents/prothos/prothos-amd64/cpu/syscall_entry.S mode link from module kernel-entry-amd64
+installing file /home/oliver/Documents/prothos/mythos/3rdparty/mcconf/stdmodules/mako_mcconf.db to /home/oliver/Documents/prothos/prothos-amd64/mcconf.db mode mako from module mcconf-makefile
 installing file /home/oliver/Documents/prothos/mythos/kernel/util/sys-structures/util/MultiBoot.hh to /home/oliver/Documents/prothos/prothos-amd64/util/MultiBoot.hh mode link from module util-multiboot
 installing file /home/oliver/Documents/prothos/mythos/kernel/boot/memory-root/boot/memory-root.cc to /home/oliver/Documents/prothos/prothos-amd64/boot/memory-root.cc mode link from module memory-root
 installing file /home/oliver/Documents/prothos/mythos/kernel/objects/memory-amd64/objects/MemoryRegion.hh to /home/oliver/Documents/prothos/prothos-amd64/objects/MemoryRegion.hh mode link from module objects-memory-amd64
