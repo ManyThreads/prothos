@@ -57,7 +57,7 @@ public:
     template<typename Body>
     ContinueNode(Graph &g, Body body, size_t count)
         : GraphNode(g)
-        , Internal::ContinueInput<Output>(this, body, count)
+        , Internal::ContinueInput<Output>(body, count)
     {}
 
     std::vector<Internal::Receiver<Output>*> successors() override {
