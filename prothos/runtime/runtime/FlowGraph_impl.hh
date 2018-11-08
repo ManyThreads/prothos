@@ -291,25 +291,25 @@ public:
         , myNode(n)
         , myOutput(*this)
     {
-	for (auto promise = promises.begin(); promise != promises.end(); promise++){
-		auto p = *promise;
-		auto f = new Future<ContMsg>(p, this);
-		p->registerFuture(*f);
-		myInput.push_back(f);
-	}
+        for (auto promise = promises.begin(); promise != promises.end(); promise++) {
+            auto p = *promise;
+            auto f = new Future<ContMsg>(p, this);
+            p->registerFuture(*f);
+            myInput.push_back(f);
+        }
     }
 
     ~ContinueTask() {
-    	myInput.clear();
+        myInput.clear();
     }
 
     void bodyFunc() override {
-	ContMsg cm;
+        ContMsg cm;
         myOutput.write( myNode.applyBody(cm) );
-	for (auto fiter = myInput.begin(); fiter != myInput.end(); fiter++) {
-		auto f = *fiter;
-		f->release();
-	}
+        for (auto fiter = myInput.begin(); fiter != myInput.end(); fiter++) {
+            auto f = *fiter;
+            f->release();
+        }
     }
 
     void expand(int depth) override {
@@ -337,45 +337,47 @@ public:
         : myBody(new FunctionBodyLeaf<ContMsg, Output, Body>(body))
         , num(count), count(count), predetermined(true)
     {
-         ASSERT( count > 0 );
+        ASSERT( count > 0 );
     }
 
     template<typename Body>
-    ContinueInput(Body &body) 
+    ContinueInput(Body &body)
         : myBody(new FunctionBodyLeaf<ContMsg, Output, Body>(body))
         , num(0), count(0), predetermined(false)
-	{}
+    {}
 
-    template<typename Input>
-	void registerPredecessor(Sender<Input>& s) {
-		if (!predetermined) {
-				num++;
-		}
-	}
-    
+    void registerPredecessor(Sender<ContMsg>& s) {
+        if (!predetermined) {
+            num++;
+			count = num;
+        }
+    }
+
     Output applyBody(ContMsg &msg) {
         return (*myBody)(msg);
     }
-    
+
     FlowGraphTask *pushPromise(Promise<ContMsg> &p) override {
         ASSERT( count > 0 );
-		promises.push_back(&p);
+	    MLOG_INFO( mlog::app, "got promise");	
+        promises.push_back(&p);
         count --;
         if ( count == 0) {
+		    MLOG_INFO( mlog::app, "creating new task");	    
             new ContinueTask<ContinueInput<ContMsg>, Output>(*this, promises);
-		    count = num;
-	        promises.clear();
+            count = num;
+            promises.clear();
         }
         return nullptr;
     }
-    
+
     virtual std::vector<Receiver<Output>*> successors() = 0;
-    
+
 private:
     size_t num;
     size_t count;
     const bool predetermined;
-	FunctionBodyType * myBody;
+    FunctionBodyType * myBody;
     std::vector<Promise<ContMsg> *> promises;
 };
 
@@ -386,7 +388,7 @@ public:
     SplitTask(NodeType &n, Promise<Input> &p)
         : FlowGraphTask(0)
         , myInput(&p, this)
-        , myOutput(*this)        
+        , myOutput(*this)
         , myNode(n)
     {
     }
@@ -424,16 +426,16 @@ public:
         , myNode(node)
     {}
 
-    
+
     Output applyBody(const Input &i) {
         return (*myBody)(i);
     }
-    
+
     FlowGraphTask *pushPromise(Promise<Input> &p) override {
         return new SplitTask<NodeType,Input, Output>(myNode);
     }
-    
-    
+
+
 private:
     FunctionBodyType * myBody;
     NodeType & myNode;
@@ -761,42 +763,42 @@ public:
         , myNode(n)
         , myInput(&p, this)
         , myOutput(*this)
-		, port(-1)
-		, expandable(false)
+        , port(-1)
+        , expandable(false)
     {
         p.registerFuture(myInput);
     }
 
     void bodyFunc() override {
-		Output o;
+        Output o;
         port = myNode.applyBody(myInput.getVal(), o);
-		//if(port < Ports && port >=0){
-			//myOutput[nuim].write(o);
-		//}
-		myOutput.write(o);
+        //if(port < Ports && port >=0){
+        //myOutput[nuim].write(o);
+        //}
+        myOutput.write(o);
         myInput.release();
-		expandable = true;
+        expandable = true;
     };
 
     void expand(int depth) override {
-        if(expandable){
-			if(port < Ports && port >=0){
-				for(auto n : myNode.successors(port)) {
-					ASSERT(n);
-					n->pushPromise(myOutput);
-				}
-			}
-			expanded = true;
-		}
+        if(expandable) {
+            if(port < Ports && port >=0) {
+                for(auto n : myNode.successors(port)) {
+                    ASSERT(n);
+                    n->pushPromise(myOutput);
+                }
+            }
+            expanded = true;
+        }
     }
 
 private:
     NodeType &myNode;
     Future<Input> myInput;
     //Promise<Output> myOutput[Ports];
-	Promise<Output> myOutput;
-	int port;
-	bool expandable;
+    Promise<Output> myOutput;
+    int port;
+    bool expandable;
 };
 
 template<typename Input, typename Output, size_t Ports>
