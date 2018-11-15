@@ -213,6 +213,7 @@ public:
 
     void expand(int depth) override {
         // insert lock to avoid
+		mythos::Mutex::Lock guard(mutex);
         for(auto n : myNode.successors()) {
             ASSERT(n);
             n->pushPromise(myOutput);
@@ -228,6 +229,7 @@ private:
     NodeType &myNode;
     Future<Input> myInput;
     Promise<Output> myOutput;
+    mythos::Mutex mutex;
 };
 
 template<typename Input, typename Output>
@@ -335,9 +337,9 @@ public:
     template<typename Body>
     ContinueInput(Body &body, size_t count)
         : myBody(new FunctionBodyLeaf<ContMsg, Output, Body>(body))
-        , num(count), count(count), predetermined(true)
+        , num(count), count(0), predetermined(true)
     {
-        ASSERT( count > 0 );
+        ASSERT( num > 0 );
     }
 
     template<typename Body>
@@ -349,7 +351,7 @@ public:
     void registerPredecessor(Sender<ContMsg>& s) {
         if (!predetermined) {
             num++;
-			count = num;
+			//count = num;
         }
     }
 
@@ -358,14 +360,15 @@ public:
     }
 
     FlowGraphTask *pushPromise(Promise<ContMsg> &p) override {
-        ASSERT( count > 0 );
+	    mythos::Mutex::Lock guard(mutex);
+        ASSERT( count < num );
 	    MLOG_INFO( mlog::app, "got promise");	
         promises.push_back(&p);
-        count --;
-        if ( count == 0) {
+        count ++;
+        if ( count == num) {
 		    MLOG_INFO( mlog::app, "creating new task");	    
             new ContinueTask<ContinueInput<ContMsg>, Output>(*this, promises);
-            count = num;
+            count = 0;
             promises.clear();
         }
         return nullptr;
@@ -379,6 +382,7 @@ private:
     const bool predetermined;
     FunctionBodyType * myBody;
     std::vector<Promise<ContMsg> *> promises;
+	mythos::Mutex mutex;
 };
 
 
