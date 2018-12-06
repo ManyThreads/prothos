@@ -21,7 +21,7 @@
 #define REGISTER_BENCHMARK(x, conf) benchmark::register_benchmark(x, conf);
 #define RUN_ALL_BENCHMARKS benchmark::run_all_benchmarks();
 #define MYCONFIG(x) conf->cast<x *>(conf);
-#define BENCHMARK_SIGNATURE void (*pt2Func)(benchmark_result *, benchmark_configuration * config)
+#define BENCHMARK_SIGNATURE void (*pt2Func)(benchmark_result *, benchmark_configuration * config, long run_counter)
 
 
 
@@ -100,7 +100,7 @@ namespace benchmark {
                     case units::MS: result = result + " milliseconds"; break;
                     case units::TICKS:  result = result + " ticks"; break;
                 }
-                results << label << "run number" << std::to_string(run_number) << ':' << result << "\n";
+                results << label << ", run number " << std::to_string(run_number) << ':' << result << "\n";
             }
             std::string printable_result = results.str();
             return printable_result;
@@ -112,7 +112,7 @@ namespace benchmark {
 
     typedef benchmark_result * RESULT_STORAGE;
 
-    typedef void func_t(benchmark::benchmark_result *, benchmark_configuration * conf);
+    typedef void func_t(benchmark::benchmark_result *, benchmark_configuration * conf, long run_counter);
     typedef func_t* pfunc_t;
 
 
@@ -124,7 +124,7 @@ namespace benchmark {
          */
         class benchmark_registry {
         public:
-            std::vector<std::tuple<pfunc_t, benchmark_configuration*> > benchmarks;
+            std::vector<std::tuple<pfunc_t, std::vector<benchmark_configuration*> *> > benchmarks;
 
             /**
              * @brief Init Initialize benchmark registry
@@ -327,7 +327,7 @@ namespace benchmark {
     /**
      * @brief register_benchmark registers a benchmark function
      */
-    void register_benchmark(BENCHMARK_SIGNATURE , benchmark_configuration * config){
+    void register_benchmark(BENCHMARK_SIGNATURE , std::vector<benchmark_configuration *> * config){
         internal::benchmark_registry * reg = internal::benchmark_registry::Instance();
         reg->benchmarks.push_back(std::make_tuple(pt2Func, config));
     }
@@ -339,11 +339,15 @@ namespace benchmark {
     benchmark_result * run_all_benchmarks(){
         internal::benchmark_registry * reg = internal::benchmark_registry::Instance();
         benchmark_result * result = new benchmark_result;
-        for(std::vector<std::tuple<pfunc_t, benchmark_configuration*> >::iterator it = reg->benchmarks.begin(); it != reg->benchmarks.end(); ++it) {
+        for(std::vector<std::tuple<pfunc_t, std::vector<benchmark_configuration*> *> >::iterator it = reg->benchmarks.begin(); it != reg->benchmarks.end(); ++it) {
             auto benchmark_tuple = *it;
-            auto bm_conf = std::get<1>(benchmark_tuple);
+            auto bm_configs = std::get<1>(benchmark_tuple);
             auto bm_fp = std::get<0>(benchmark_tuple);
-            bm_fp(result, bm_conf);
+            long counter = 1;
+            for (auto bm_iterator = bm_configs->begin(); bm_iterator != bm_configs->end(); ++bm_iterator) {
+                bm_fp(result, *bm_iterator, counter);
+                counter ++;
+            }
         }
         return result;
    }

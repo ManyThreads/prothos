@@ -21,7 +21,7 @@ using namespace benchmark;
      */
 
 
-    void demobenchmark1(benchmark_result * result, benchmark_configuration * conf) {
+    void demobenchmark1(benchmark_result * result, benchmark_configuration * conf, long run_counter) {
         auto config = MYCONFIG(bm1_config)
         std::cout << config->benchmark_name << " running" << std::endl;
         std::cout << config->repeats << " repeats" << std::endl;
@@ -32,7 +32,7 @@ using namespace benchmark;
           * manual value entering
           */
         pbm_key = "partial benchmark one";
-        ADD_MS_METRIC(config->benchmark_name, pbm_key, 1234566, count)
+        ADD_MS_METRIC(config->benchmark_name, pbm_key, 1234566, run_counter)
 
         /**
           * millisecond timer creation
@@ -45,7 +45,7 @@ using namespace benchmark;
         for (auto i = 0; i < 100; i++) {
             usleep(1000);
         }
-        timer1->stop(count);
+        timer1->stop(run_counter);
 
         /**
           * clock tick timer creation
@@ -58,12 +58,12 @@ using namespace benchmark;
         for (auto i = 0; i < 100; i++) {
             usleep(100);
         }
-        timer2->stop(count);
+        timer2->stop(run_counter);
 
         std::cout << config->benchmark_name << " done" << std::endl;
     }
 
-    void demobenchmark2(benchmark_result * result, benchmark_configuration * conf) {
+    void demobenchmark2(benchmark_result * result, benchmark_configuration * conf, long run_counter) {
 
         auto config = MYCONFIG(bm2_config)
         std::cout << config->benchmark_name << " running" << std::endl;
@@ -91,19 +91,32 @@ using namespace benchmark;
         conf1.repeats = 5;
 
         bm2_config conf2;
+        bm2_config conf3;
 
         conf2.benchmark_name = "demo benchmark 2";
         conf2.repeats = 5;
         conf2.parameter1 = 1000;
         conf2.parameter2 = "hello world";
 
+        conf3.benchmark_name = "demo benchmark 3";
+        conf3.repeats = 5;
+        conf3.parameter1 = 1000;
+        conf3.parameter2 = "hello world";
+
+        std::vector<benchmark_configuration*> configs1;
+        std::vector<benchmark_configuration*> configs2;
+
+        configs1.push_back(&conf1);
+        configs2.push_back(&conf2);
+
+        configs2.push_back(&conf3);
 
         /**
           * register benchmarks
           */
 
-        REGISTER_BENCHMARK(&demobenchmark1, &conf1)
-        REGISTER_BENCHMARK(&demobenchmark2, &conf2)
+        REGISTER_BENCHMARK(&demobenchmark1, &configs1)
+        REGISTER_BENCHMARK(&demobenchmark2, &configs2)
 
 
         /**
