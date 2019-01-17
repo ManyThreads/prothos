@@ -46,17 +46,33 @@ int userMain(){
 			//return 0;
 		//});
 
-		auto msg = new FlowGraph::FunctionNode<int, int>(g, [](int num){
+		auto msg = new FlowGraph::FunctionNode<int, FlowGraph::ContinueMsg>(g, [](int num){
 			MLOG_INFO(mlog::app,"Found prime number: ", num);		
-			return num;
+			return FlowGraph::ContinueMsg();
 		});
+
+		auto cn0 = new FlowGraph::ContinueNode<FlowGraph::ContinueMsg>(g, [](FlowGraph::ContinueMsg){
+					
+			MLOG_INFO(mlog::app,"CN0 fired!");		
+			return FlowGraph::ContinueMsg();
+		}, 1 );
+
+		auto cn1 = new FlowGraph::ContinueNode<FlowGraph::ContinueMsg>(g, [](FlowGraph::ContinueMsg){
+					
+			MLOG_INFO(mlog::app,"CN1 fired!");		
+			return FlowGraph::ContinueMsg();
+		}, 2 );
 
 	  FlowGraph::makeEdge(*numGen, *primeCheck);
 	  FlowGraph::makeEdge(primeCheck->get(0), *msg);
+	  FlowGraph::makeEdge(*msg, *cn0);
+	  FlowGraph::makeEdge(*msg, *cn1);
+	  FlowGraph::makeEdge(*cn0, *cn1);
 	  //FlowGraph::makeEdge(*numGen, join->getInPort<0>());
 	  //FlowGraph::makeEdge(*primeCheck, join->getInPort<1>());
 	  //FlowGraph::makeEdge(*join, *tuple);
 	  numGen->activate();
+
   });
 
   UserTask* t0 = new UserTask([](){

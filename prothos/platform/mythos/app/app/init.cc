@@ -42,7 +42,8 @@
 #include "runtime/umem.hh"
 
 #include "app/UserApp.hh"
-
+#include "app/WaveFront.hh"
+#include "app/MiniWave.hh"
 #include <vector>
 
 using namespace Prothos;
@@ -111,10 +112,12 @@ int main()
    mythos::heap.addRange(vaddr, size);
   }
 
-  int ret = userMain();
+  //int ret = userMain();
+
+  int waveret = miniwaveMain();
 
   mythos::syscall_debug(end, sizeof(end)-1);
 
-  return ret;
+  return waveret;
 }
 
