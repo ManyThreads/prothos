@@ -1,4 +1,4 @@
 # -*- mode:toml; -*-
 [module.application-prothos]
-    incfiles = [ "app/UserApp.hh" ] 
+    incfiles = [ "app/UserApp.hh", "app/MiniWave.hh", "app/Wavefront.hh", "benchmark/benchmark.h", "benchmark/timing.h" ] 
     appfiles = [ ] 

@@ -4,6 +4,7 @@
 #include "runtime/Task.hh"
 #include "runtime/FlowGraph.hh"
 #include <string>
+#include <iostream>
 
 using namespace Prothos;
 
@@ -83,6 +84,14 @@ int waveMain() {
         });
 
         makeEdge( *trigger, *nodes[0][0] );
+
+
+        DotVisitor visitor;
+        //NodeDescription nd;
+        visitor.traverse(*trigger); 
+        visitor.to_file();
+        std::cout << visitor.to_string() << std::endl;
+
 
         trigger->activate();
 		// TODO how to concatenate strings correctly here

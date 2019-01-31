@@ -51,6 +51,10 @@ int miniwaveMain() {
 
         makeEdge( *trigger, *node1 );
 
+        Visitor visitor;
+//        NodeDescription nd;
+        visitor.traverse(*trigger);        
+
         trigger->activate();
     });
 

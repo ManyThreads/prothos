@@ -1,6 +1,7 @@
 #pragma once
 
 #include "runtime/FlowGraph_impl.hh"
+#include "runtime/Visitor.hh"
 
 namespace Prothos {
 namespace FlowGraph {
@@ -11,7 +12,7 @@ public:
     Graph() {}
 };
 
-class GraphNode {
+class GraphNode:public Visitable {
 public:
     GraphNode(Graph &g)
         : g(g)
@@ -47,6 +48,20 @@ public:
     std::vector<Internal::Receiver<Output>*> successors() override {
         return Internal::Sender<Output>::successors();
     }
+
+    virtual GraphNode * getThisPointer() override {
+        return static_cast<GraphNode *>(this);
+    }
+
+    virtual bool accept(Visitor& visitor) {
+        if(visitor.beginNode(getThisPointer())) {
+            visitor.setNodeType(this, EFunctionNode);
+            for (Internal::Receiver<Output> * succ : successors()) {
+               visitor.addSuccessor(this, succ->getThisPointer());
+            }
+        }
+    }
+
 };
 
 typedef Internal::ContMsg ContinueMsg;
@@ -70,6 +85,21 @@ public:
     std::vector<Internal::Receiver<Output>*> successors() override {
         return Internal::Sender<Output>::successors();
     }
+    
+    virtual GraphNode * getThisPointer() override {
+        return static_cast<GraphNode *>(this);
+    }
+   
+    virtual bool accept(Visitor& visitor) {
+        if(visitor.beginNode(getThisPointer())) {
+            visitor.setNodeType(this, EContinueNode);
+            for (Internal::Receiver<Output> * succ : successors()) {
+               visitor.addSuccessor(this, succ->getThisPointer());
+            }
+        }
+    }
+
+
 };
 
 
@@ -85,6 +115,20 @@ public:
     std::vector<Internal::Receiver<Output>*> successors() override {
         return Internal::Sender<Output>::successors();
     }
+
+    virtual GraphNode * getThisPointer() override {
+        return static_cast<GraphNode *>(this);
+    }
+    
+    virtual bool accept(Visitor& visitor) {
+        if(visitor.beginNode(getThisPointer())) {
+            visitor.setNodeType(this, ESplitNode);
+            for (Internal::Receiver<Output> * succ : successors()) {
+               visitor.addSuccessor(this, succ->getThisPointer());
+            }
+        }
+    }
+
 };
 
 template <typename OutTuple>
@@ -96,6 +140,19 @@ public:
 
     std::vector<Internal::Receiver<OutTuple>*> successors() {
         return Internal::Sender<OutTuple>::successors();
+    }
+
+    virtual GraphNode * getThisPointer() override {
+        return static_cast<GraphNode *>(this);
+    }
+ 
+    virtual bool accept(Visitor& visitor) {
+        if(visitor.beginNode(getThisPointer())) {
+            visitor.setNodeType(this, ESplitNode);
+            for (Internal::Receiver<OutTuple> * succ : successors()) {
+               visitor.addSuccessor(this, succ->getThisPointer());
+            }
+        }
     }
 
 };
@@ -118,10 +175,20 @@ public:
     std::vector<Internal::Receiver<Output>*> successors() {
         return Internal::Sender<Output>::successors();
     }
+    
+    virtual bool accept(Visitor& visitor) {
+        if(visitor.beginNode(static_cast<GraphNode *>(this))) {
+            visitor.setNodeType(this, ESplitNode);
+            for (Internal::Receiver<Output> * succ : successors()) {
+               visitor.addSuccessor(this, succ->getThisPointer());
+            }
+        }
+    }
 
     void activate() {
         new Internal::SourceTask<SourceNode, Output>(*this);
     }
+ 
 
 private:
     
@@ -148,16 +215,31 @@ public:
 		return sender[port].successors();
     }
 
+    virtual GraphNode * getThisPointer() override {
+        return static_cast<GraphNode *>(this);
+    }
+
+    virtual bool accept(Visitor& visitor) {
+        if(visitor.beginNode(getThisPointer())) {
+            visitor.setNodeType(this, ESplitNode);
+            for (size_t port = 0; port < Ports; port++) {   
+                for (Internal::Receiver<Output> * succ : get(port).successors()) {
+                    visitor.addSuccessor(this, succ->getThisPointer());
+                }
+            }
+        }
+    }
+
 	Internal::Sender<Output>& get(size_t port){
         ASSERT(port < Ports);
 		return sender[port];
 	}
-
+    
 private:
 	Internal::Sender<Output> sender[Ports];
 };
 
-} // FlowGraph
-} // Prothos
+}; // FlowGraph
+}; // Prothos
 
 

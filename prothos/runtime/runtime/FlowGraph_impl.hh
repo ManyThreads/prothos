@@ -13,6 +13,19 @@
 
 namespace Prothos {
 namespace FlowGraph {
+
+enum NodeType {
+    ENotImplemented = -1,
+    EContinueNode,
+    EFunctionNode,
+    ESplitNode,
+    EJoinNode,
+    ESourceNode,
+    EConditionalNode
+};
+
+class GraphNode;
+
 namespace Internal {
 
 static const int MaxDecodingDepth = 5; // (-1) for infinite unrolling
@@ -146,6 +159,7 @@ template<typename Input>
 class Receiver {
 public:
     virtual FlowGraphTask *pushPromise(Promise<Input> &p) = 0;
+    virtual GraphNode * getThisPointer() = 0;
     virtual void registerPredecessor(Sender<Input>& s) {};
     virtual void removePredecessor(Sender<Input>& s) {};
 
@@ -168,6 +182,10 @@ public:
     void removeSuccessor(Receiver<Output> &r) {
         mySuccessors.removeSuccessor(&r);
         mySuccessors.erase(find(mySuccessors.begin(), mySuccessors.end(), r), mySuccessors.end());
+    }
+
+    virtual FlowGraph::NodeType getNodeType() {
+        return ENotImplemented;
     }
 
 private:
