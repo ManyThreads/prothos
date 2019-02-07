@@ -1,0 +1,4 @@
+# -*- mode:toml; -*-
+[module.linux]
+    incfiles = [ "runtime/DotVisitor.hh", "app/DottedWaveFront.hh" ]
+    appfiles = [ ]

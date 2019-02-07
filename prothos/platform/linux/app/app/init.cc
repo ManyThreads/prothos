@@ -1,6 +1,5 @@
 #include "app/UserApp.hh"
-#include "app/MiniWave.hh"
-#include "app/WaveFront.hh"
+#include "app/DottedWaveFront.hh"
 
 #include <iostream>
 

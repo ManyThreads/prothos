@@ -3,7 +3,9 @@
 #include "runtime/mlog.hh"
 #include "runtime/Task.hh"
 #include "runtime/FlowGraph.hh"
+#include "runtime/DotVisitor.hh"
 #include <string>
+#include <iostream>
 
 using namespace Prothos;
 
@@ -83,6 +85,12 @@ int waveMain() {
         });
 
         makeEdge( *trigger, *nodes[0][0] );
+
+
+        DotVisitor visitor;
+        visitor.traverse(*trigger); 
+        visitor.to_file();
+
 
         trigger->activate();
 		// TODO how to concatenate strings correctly here
