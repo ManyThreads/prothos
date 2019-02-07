@@ -104,6 +104,7 @@ public:
         std::stringstream ss;
         ss << "digraph D {\n";
         ss << "\n";
+        ss << "rankdir=LR;\n";
 
         for (auto const& x : visitedNodes) {
             ss << "\t" << x.second->getKey() << "[shape = " << typeToShape(x.second->getNodeType()) <<"]\n";
