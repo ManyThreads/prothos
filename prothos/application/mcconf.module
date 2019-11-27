@@ -1,4 +1,4 @@
 # -*- mode:toml; -*-
 [module.application-prothos]
-    incfiles = [ "app/UserApp.hh" ] 
-    appfiles = [ ] 
+    incfiles = [ "app/cholesky.cpp" ] 
+    appfiles = [ "app/init_cholesky.cpp"] 

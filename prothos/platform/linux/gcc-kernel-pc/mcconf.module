@@ -21,6 +21,7 @@ APP_CXXFLAGS += -O2 -g
 APP_CXXFLAGS += -lpthread
 APP_LD = $(LD)
 APP_LDFLAGS += -g -pthread
+APP_LDFLAGS += -lmkl_intel_thread -lmkl_rt -lmkl_core -lmkl_intel_lp64 -liomp5 -I/usr/include/mkl
 
 INITAPP_CXX = $(CXX) 
 INITAPP_CPPFLAGS += $(CPPFLAGS)
@@ -28,4 +29,5 @@ INITAPP_CPPFLAGS += -I.
 INITAPP_CXXFLAGS += $(CXXFLAGS)
 INITAPP_CXXFLAGS += -std=c++11
 INITAPP_CXXFLAGS += -lpthread
+INITAPP_CXXFLAGS += -I/usr/include/mkl
 '''

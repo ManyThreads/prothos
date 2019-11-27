@@ -1,9 +1,9 @@
-#include "app/UserApp.hh"
+#include "app/cholesky.cpp"
 
 #include <iostream>
 
-int main()
+int main(int argc, char *argv[])
 {
-	return userMain();
+	return userMain(argc, argv);
 }
 
